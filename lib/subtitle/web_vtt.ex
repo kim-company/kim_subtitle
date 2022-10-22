@@ -24,8 +24,9 @@ defmodule Subtitle.WebVTT do
   def mime(), do: "text/vtt"
 
   def unmarshal(vtt) do
-    with {:ok, _text_header, body} <- parse_header(vtt),
-         {:ok, cues} <- parse_body(body, []) do
+    with {:ok, text_header, body} <- parse_header(vtt),
+         {:ok, offset} <- parse_offset(text_header),
+         {:ok, cues} <- parse_body(body, offset, []) do
       {:ok, %__MODULE__{cues: cues}}
     end
   end
@@ -55,22 +56,40 @@ defmodule Subtitle.WebVTT do
     end
   end
 
+  defp parse_offset("X-TIMESTAMP-MAP=" <> offsets) do
+    offsets
+    |> String.split(",")
+    |> Enum.reduce(0, &parse_offset/2)
+    |> then(&{:ok, &1})
+  end
+  defp parse_offset(_), do: {:ok, 0}
+
+  defp parse_offset("MPEGTS:" <> amount, acc) do
+    amount = String.to_integer(amount)
+    acc + round(amount / 90)
+  end
+
+  defp parse_offset("LOCAL:" <> amount, acc) do
+    {:ok, timing} = parse_timing(amount)
+    acc - timing
+  end
+
   defp is_invalid_empty_file?(vtt) do
     vtt
     |> String.split("\n")
     |> Enum.member?("")
   end
 
-  defp parse_body(body, acc) do
+  defp parse_body(body, offset, acc) do
     case String.split(body, "\n\n", parts: 2) do
       [""] ->
         {:ok, Enum.reverse(acc)}
 
       [block | rest] ->
-        case parse_block(block) do
+        case parse_block(block, offset) do
           {:ok, cue_note_or_style} ->
             body = if rest != [], do: List.first(rest), else: ""
-            parse_body(body, [cue_note_or_style | acc])
+            parse_body(body, offset, [cue_note_or_style | acc])
 
           {:error, reason} ->
             {:error, reason, body}
@@ -78,15 +97,15 @@ defmodule Subtitle.WebVTT do
     end
   end
 
-  defp parse_block("NOTE\n" <> text) do
+  defp parse_block("NOTE\n" <> text, _offset) do
     {:ok, %Note{text: String.trim(text)}}
   end
 
-  defp parse_block("STYLE\n" <> css) do
+  defp parse_block("STYLE\n" <> css, _offset) do
     {:ok, %Style{css: String.trim(css)}}
   end
 
-  defp parse_block(candidate_cue) do
+  defp parse_block(candidate_cue, offset) do
     {id, rest} = parse_cue_id(candidate_cue)
 
     case parse_timings(rest) do
@@ -94,8 +113,8 @@ defmodule Subtitle.WebVTT do
         {:ok,
          %Subtitle.Cue{
            id: id,
-           from: from,
-           to: to,
+           from: from + offset,
+           to: to + offset,
            text: String.trim(rest)
          }}
 

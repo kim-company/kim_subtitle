@@ -111,13 +111,15 @@ defmodule Subtitle.WebVTTTest do
       bis Ende März vorgelegt werden.
       """
 
+      offset = round(181083 / 90)
+
       assert {:ok,
               %WebVTT{
                 cues: [
                   %Subtitle.Cue{
                     id: "",
-                    from: WebVTT.timing_to_ms(44, 13, 215),
-                    to: WebVTT.timing_to_ms(44, 17, 881),
+                    from: WebVTT.timing_to_ms(44, 13, 215) + offset,
+                    to: WebVTT.timing_to_ms(44, 17, 881) + offset,
                     text:
                       ~s/Deshalb sollte sollten die Empfehlung\nbis Ende März vorgelegt werden./
                   }
