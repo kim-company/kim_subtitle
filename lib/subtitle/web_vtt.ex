@@ -11,7 +11,7 @@ defmodule Subtitle.WebVTT do
   of the text at the correct times.
   """
 
-  defstruct cues: []
+  defstruct cues: [], header: %{}
 
   defmodule Note do
     defstruct [:text]
@@ -24,10 +24,10 @@ defmodule Subtitle.WebVTT do
   def mime(), do: "text/vtt"
 
   def unmarshal(vtt) do
-    with {:ok, text_header, body} <- parse_header(vtt),
-         {:ok, offset} <- parse_offset(text_header),
+    with {:ok, header, body} <- parse_header(vtt),
+         offset = offset(header),
          {:ok, cues} <- parse_body(body, offset, []) do
-      {:ok, %__MODULE__{cues: cues}}
+      {:ok, %__MODULE__{cues: cues, header: header}}
     end
   end
 
@@ -39,40 +39,64 @@ defmodule Subtitle.WebVTT do
     ttt + ss * 1_000 + mm * 60 * 1000 + hh * 60 * 60 * 1000
   end
 
+  defp offset(%{offset: x}), do: x
+  defp offset(_header), do: 0
+
   defp parse_header(vtt) do
     case String.split(vtt, "\n\n", parts: 2) do
       ["WEBVTT", body] ->
-        {:ok, "", body}
+        {:ok, %{}, body}
 
       ["WEBVTT" <> text_header, body] ->
-        {:ok, String.trim(text_header), body}
+        header =
+          text_header
+          |> String.trim()
+          |> String.split("\n")
+          |> parse_header_fields(%{})
+
+        {:ok, header, body}
 
       _other ->
         if is_invalid_empty_file?(vtt) do
-          {:ok, "", ""}
+          {:ok, %{}, ""}
         else
           {:error, :invalid_header, vtt}
         end
     end
   end
 
-  defp parse_offset("X-TIMESTAMP-MAP=" <> offsets) do
-    offsets
-    |> String.split(",")
-    |> Enum.reduce(0, &parse_offset/2)
-    |> then(&{:ok, &1})
-  end
-  defp parse_offset(_), do: {:ok, 0}
+  defp parse_header_fields([], acc), do: acc
 
-  defp parse_offset("MPEGTS:" <> amount, acc) do
-    amount = String.to_integer(amount)
-    acc + round(amount / 90)
+  defp parse_header_fields(["X-TIMESTAMP-MAP=" <> offsets | _], acc) do
+    {offset, timestamp_map} =
+      offsets
+      |> String.split(",")
+      |> Enum.map(&parse_offset/1)
+      |> Enum.reduce(%{}, fn offset, acc ->
+        Map.merge(acc, offset, fn :offset, v1, v2 -> v1 + v2 end)
+      end)
+      |> Map.pop!(:offset)
+
+    acc
+    |> Map.put(:offset, offset)
+    |> Map.put(:x_timestamp_map, timestamp_map)
   end
 
-  defp parse_offset("LOCAL:" <> amount, acc) do
+  defp parse_header_fields([other | _], acc) do
+    Map.update(acc, :description, [other], fn acc -> acc ++ [other] end)
+  end
+
+  defp parse_offset("MPEGTS:" <> amount) do
+    timing = String.to_integer(amount)
+    %{mpeg_ts: timing, offset: round(timing / 90)}
+  end
+
+  defp parse_offset("LOCAL:" <> amount) do
     {:ok, timing} = parse_timing(amount)
-    acc - timing
+    %{local: timing, offset: -timing}
   end
+
+  defp parse_offset(_), do: %{offset: 0}
 
   defp is_invalid_empty_file?(vtt) do
     vtt
