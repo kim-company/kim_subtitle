@@ -31,6 +31,24 @@ defmodule Subtitle.WebVTT do
     end
   end
 
+  def unmarshal!(data) do
+    case unmarshal(data) do
+      {:ok, vtt} -> vtt
+      {:error, reason} -> raise ArgumentError, reason
+    end
+  end
+
+  def marshal(%__MODULE__{} = _vtt) do
+    {:error, :not_implemented}
+  end
+
+  def marshal!(%__MODULE__{} = vtt) do
+    case marshal(vtt) do
+      {:ok, data} -> data
+      {:error, reason} -> raise ArgumentError, reason
+    end
+  end
+
   def timing_to_ms(mm, ss, ttt) do
     timing_to_ms(0, mm, ss, ttt)
   end

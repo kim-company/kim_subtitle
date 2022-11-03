@@ -141,4 +141,15 @@ defmodule Subtitle.WebVTTTest do
       assert [] == webvtt.cues
     end
   end
+
+  describe "marshal/1" do
+    test "simplest possible" do
+      input = """
+      WEBVTT
+
+      """
+
+      assert input == input |> WebVTT.unmarshal!() |> WebVTT.marshal!()
+    end
+  end
 end
