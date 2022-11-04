@@ -15,7 +15,7 @@ defmodule Subtitle.Cue do
           chunk
           |> Enum.map(fn %__MODULE__{id: x} -> x end)
           |> Enum.filter(fn id -> id != "" and id != nil end)
-          |> Enum.join(" - ")
+          |> Enum.join("-")
 
         %__MODULE__{from: from, text: text} = List.first(chunk)
         %__MODULE__{to: to} = List.last(chunk)
