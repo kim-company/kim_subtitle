@@ -2,6 +2,7 @@ defmodule Subtitle.WebVTTTest do
   use ExUnit.Case
 
   alias Subtitle.WebVTT
+  alias Subtitle.WebVTT.{HeaderLine, Timing}
 
   describe "unmarshal/1" do
     test "simplest possible" do
@@ -10,17 +11,32 @@ defmodule Subtitle.WebVTTTest do
 
       """
 
-      assert {:ok, %WebVTT{cues: []}} == WebVTT.unmarshal(input)
+      assert {:ok, webvtt} = WebVTT.unmarshal(input)
+      assert [] == webvtt.cues
+      assert [%HeaderLine{key: :description, original: "WEBVTT", data: %{}}] == webvtt.header
     end
 
     test "with header text" do
       input = """
       WEBVTT - This file has no cues.
+      But it has a two line description.
 
       """
 
       assert {:ok, webvtt} = WebVTT.unmarshal(input)
-      assert %{description: ["- This file has no cues."]} == webvtt.header
+
+      assert [
+               %HeaderLine{
+                 key: :description,
+                 original: "WEBVTT - This file has no cues.",
+                 data: %{}
+               },
+               %HeaderLine{
+                 key: :description,
+                 original: "But it has a two line description.",
+                 data: %{}
+               }
+             ] == webvtt.header
     end
 
     test "common with header and cues" do
@@ -47,20 +63,20 @@ defmodule Subtitle.WebVTTTest do
       assert [
                %Subtitle.Cue{
                  id: "14",
-                 from: WebVTT.timing_to_ms(1, 14, 815),
-                 to: WebVTT.timing_to_ms(1, 18, 114),
+                 from: Timing.to_ms(1, 14, 815),
+                 to: Timing.to_ms(1, 18, 114),
                  text: ~s/- What?\n- Where are we now?/
                },
                %Subtitle.Cue{
                  id: "15",
-                 from: WebVTT.timing_to_ms(1, 18, 171),
-                 to: WebVTT.timing_to_ms(1, 20, 991),
+                 from: Timing.to_ms(1, 18, 171),
+                 to: Timing.to_ms(1, 20, 991),
                  text: ~s/- This is big bat country./
                },
                %Subtitle.Cue{
                  id: "16",
-                 from: WebVTT.timing_to_ms(1, 21, 58),
-                 to: WebVTT.timing_to_ms(1, 23, 868),
+                 from: Timing.to_ms(1, 21, 58),
+                 to: Timing.to_ms(1, 23, 868),
                  text:
                    ~s/- [ Bats Screeching ]\n- They won't get in your hair. They're after the bugs./
                }
@@ -83,14 +99,14 @@ defmodule Subtitle.WebVTTTest do
       assert [
                %Subtitle.Cue{
                  id: "",
-                 from: WebVTT.timing_to_ms(4, 2, 500),
-                 to: WebVTT.timing_to_ms(4, 5, 0),
+                 from: Timing.to_ms(4, 2, 500),
+                 to: Timing.to_ms(4, 5, 0),
                  text: ~s/J'ai commencé le basket à l'âge de 13, 14 ans/
                },
                %Subtitle.Cue{
                  id: "",
-                 from: WebVTT.timing_to_ms(4, 5, 1),
-                 to: WebVTT.timing_to_ms(4, 7, 800),
+                 from: Timing.to_ms(4, 5, 1),
+                 to: Timing.to_ms(4, 7, 800),
                  text:
                    ~s|Sur les <i.foreignphrase><lang en>playground</lang></i>, ici à Montpellier|
                }
@@ -100,7 +116,8 @@ defmodule Subtitle.WebVTTTest do
     test "with X-TIMESTAMP-MAP in the header" do
       # See https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming-22#section-3.5
       input = """
-      WEBVTT
+      WEBVTT with a note
+      and another one
       X-TIMESTAMP-MAP=MPEGTS:181083,LOCAL:00:00:00.000
 
       00:44:13.215 --> 00:44:17.881
@@ -109,29 +126,29 @@ defmodule Subtitle.WebVTTTest do
       """
 
       offset = round(181_083 / 90)
+      assert {:ok, webvtt} = WebVTT.unmarshal(input)
 
-      assert {:ok,
-              %WebVTT{
-                cues: [
-                  %Subtitle.Cue{
-                    id: "",
-                    from: WebVTT.timing_to_ms(44, 13, 215) + offset,
-                    to: WebVTT.timing_to_ms(44, 17, 881) + offset,
-                    text:
-                      ~s/Deshalb sollte sollten die Empfehlung\nbis Ende März vorgelegt werden./
-                  }
-                ],
-                header: %{
-                  x_timestamp_map: %{
-                    mpeg_ts: 181_083,
-                    local: 0
-                  },
-                  offset: 2012
-                }
-              }} == WebVTT.unmarshal(input)
+      assert [
+               %Subtitle.Cue{
+                 id: "",
+                 from: Timing.to_ms(44, 13, 215) + offset,
+                 to: Timing.to_ms(44, 17, 881) + offset,
+                 text: ~s/Deshalb sollte sollten die Empfehlung\nbis Ende März vorgelegt werden./
+               }
+             ] == webvtt.cues
+
+      assert [
+               %HeaderLine{key: :description, original: "WEBVTT with a note", data: %{}},
+               %HeaderLine{key: :description, original: "and another one", data: %{}},
+               %HeaderLine{
+                 key: :x_timestamp_map,
+                 original: "X-TIMESTAMP-MAP=MPEGTS:181083,LOCAL:00:00:00.000",
+                 data: %{offset: offset}
+               }
+             ] == webvtt.header
     end
 
-    test "recession#1" do
+    test "regression#1" do
       input = """
       WEBVTT
       X-TIMESTAMP-MAP=MPEGTS:181083,LOCAL:00:00:00.000
@@ -142,10 +159,19 @@ defmodule Subtitle.WebVTTTest do
     end
   end
 
-  describe "marshal/1" do
+  describe "marshal!/1" do
     test "simplest possible" do
       input = """
       WEBVTT
+
+      """
+
+      assert input == input |> WebVTT.unmarshal!() |> WebVTT.marshal!()
+    end
+
+    test "with header text" do
+      input = """
+      WEBVTT - This file has no cues.
 
       """
 
