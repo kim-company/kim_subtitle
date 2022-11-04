@@ -56,6 +56,7 @@ defmodule Subtitle.WebVTTTest do
       00:01:21.058 --> 00:01:23.868
       - [ Bats Screeching ]
       - They won't get in your hair. They're after the bugs.
+
       """
 
       assert {:ok, webvtt} = WebVTT.unmarshal(input)
@@ -92,6 +93,7 @@ defmodule Subtitle.WebVTTTest do
 
       04:05.001 --> 04:07.800
       Sur les <i.foreignphrase><lang en>playground</lang></i>, ici à Montpellier
+
       """
 
       assert {:ok, webvtt} = WebVTT.unmarshal(input)
@@ -123,6 +125,7 @@ defmodule Subtitle.WebVTTTest do
       00:44:13.215 --> 00:44:17.881
       Deshalb sollte sollten die Empfehlung
       bis Ende März vorgelegt werden.
+
       """
 
       offset = round(181_083 / 90)
@@ -152,6 +155,7 @@ defmodule Subtitle.WebVTTTest do
       input = """
       WEBVTT
       X-TIMESTAMP-MAP=MPEGTS:181083,LOCAL:00:00:00.000
+
       """
 
       assert {:ok, webvtt} = WebVTT.unmarshal(input)
@@ -172,6 +176,43 @@ defmodule Subtitle.WebVTTTest do
     test "with header text" do
       input = """
       WEBVTT - This file has no cues.
+
+      """
+
+      assert input == input |> WebVTT.unmarshal!() |> WebVTT.marshal!()
+    end
+
+    test "common with header and cues" do
+      input = """
+      WEBVTT - This file has cues.
+
+      14
+      00:01:14.815 --> 00:01:18.114
+      - What?
+      - Where are we now?
+
+      15
+      00:01:18.171 --> 00:01:20.991
+      - This is big bat country.
+
+      16
+      00:01:21.058 --> 00:01:23.868
+      - [ Bats Screeching ]
+      - They won't get in your hair. They're after the bugs.
+
+      """
+
+      assert input == input |> WebVTT.unmarshal!() |> WebVTT.marshal!()
+    end
+
+    test "with X-TIMESTAMP-MAP in the header" do
+      input = """
+      WEBVTT
+      X-TIMESTAMP-MAP=MPEGTS:181083,LOCAL:00:00:00.000
+
+      00:44:13.215 --> 00:44:17.881
+      Deshalb sollte sollten die Empfehlung
+      bis Ende März vorgelegt werden.
 
       """
 

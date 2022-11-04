@@ -14,6 +14,7 @@ defmodule Subtitle.WebVTT do
   require Logger
 
   alias Subtitle.WebVTT.{Timing, Note, Style, HeaderLine}
+  alias Subtitle.Cue
 
   defstruct header: [], cues: []
 
@@ -36,11 +37,28 @@ defmodule Subtitle.WebVTT do
   end
 
   def marshal!(%__MODULE__{} = vtt) do
-    IO.iodata_to_binary([marshal_header(vtt)])
+    header = marshal_header(vtt)
+    body = marshal_body(vtt)
+    splitter = if body != [], do: ["\n"], else: []
+    ending = if body != [], do: [], else: ["\n"]
+    IO.iodata_to_binary([header, splitter, body, ending])
   end
 
   defp marshal_header(%__MODULE__{header: header}) do
-    Enum.map(header, fn %HeaderLine{original: original} -> original end)
+    Enum.map(header, fn %HeaderLine{original: original} -> [original, "\n"] end)
+  end
+
+  defp marshal_body(%__MODULE__{header: header, cues: cues}) do
+    offset = cue_offset(header)
+
+    cues
+    |> Enum.map(fn cue = %Cue{from: from, to: to} ->
+      %Cue{cue | from: from - offset, to: to - offset}
+    end)
+    |> Enum.map(fn %Cue{id: id, from: from, to: to, text: text} ->
+      id = if id != "" and id != nil, do: [id, "\n"], else: []
+      [id, Timing.from_ms(from), " --> ", Timing.from_ms(to), "\n", text, "\n\n"]
+    end)
   end
 
   defp parse_header(header) do
@@ -101,7 +119,7 @@ defmodule Subtitle.WebVTT do
     case parse_timings(rest) do
       {:ok, from, to, rest} ->
         {:ok,
-         %Subtitle.Cue{
+         %Cue{
            id: id,
            from: from + offset,
            to: to + offset,
