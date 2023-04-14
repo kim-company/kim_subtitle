@@ -28,4 +28,57 @@ defmodule Subtitle.CueTest do
       assert [%Cue{from: 0, to: 8, text: "- What?"}] == Cue.tidy(input)
     end
   end
+
+  describe "split/3" do
+    test "does not split short sentences" do
+      cue = %Cue{
+        text: "Keine Nebengeräusche",
+        from: 0,
+        to: 2000
+      }
+
+      assert Cue.split(cue, 10, 37) == [cue]
+    end
+
+    test "wraps very long words" do
+      input = %Cue{
+        text: "KeineNeben-geräuschevonihnenhören.",
+        from: 0,
+        to: 2000
+      }
+
+      expected = [
+        %Cue{from: 0, to: 628, text: "KeineNeben-"},
+        %Cue{from: 629, to: 1485, text: "geräuschevonih-"},
+        %Cue{from: 1486, to: 2000, text: "nenhören."}
+      ]
+
+      assert Cue.split(input, 10, 15) == expected
+    end
+
+    test "splits a long sentence into multiple lines" do
+      input = %Cue{
+        text: "Keine Nebengeräusche von ihnen hören.",
+        from: 0,
+        to: 2000
+      }
+
+      expected = [
+        %Cue{from: 0, to: 1110, text: "Keine Nebengeräusche"},
+        %Cue{from: 1111, to: 2000, text: "von ihnen hören."}
+      ]
+
+      assert Cue.split(input, 10, 32) == expected
+    end
+
+    test "splits a sentence that fits into mutliple lines" do
+      input = %Cue{
+        text: "Keine Nebengeräusche von ihnen hören.",
+        from: 0,
+        to: 2000
+      }
+
+      assert Cue.split(input, 10, 37) == [input]
+    end
+  end
 end
