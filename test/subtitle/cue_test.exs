@@ -29,6 +29,48 @@ defmodule Subtitle.CueTest do
     end
   end
 
+  describe "extend/2" do
+    test "extends short cues" do
+      cue = %Cue{from: 1, to: 100, text: "Hello"}
+      assert Cue.extend(cue, 1000) == %Cue{from: 1, to: 1001, text: "Hello"}
+    end
+
+    test "doesnt touch long cues" do
+      cue = %Cue{from: 1, to: 10000, text: "Hello"}
+      assert Cue.extend(cue, 1000) == cue
+    end
+  end
+
+  describe "cut/2" do
+    test "cuts long cues" do
+      cue = %Cue{from: 1, to: 10000, text: "Hello"}
+      assert Cue.cut(cue, 1000) == %Cue{from: 1, to: 1001, text: "Hello"}
+    end
+
+    test "doesnt touch short cues" do
+      cue = %Cue{from: 1, to: 100, text: "Hello"}
+      assert Cue.cut(cue, 1000) == cue
+    end
+  end
+
+  describe "align/1" do
+    test "removes overlaps and aligns the cues" do
+      input = [
+        %Cue{from: 0, to: 1000, text: "1"},
+        %Cue{from: 900, to: 1000, text: "2"},
+        %Cue{from: 1050, to: 1550, text: "3"}
+      ]
+
+      output = [
+        %Cue{from: 0, to: 1000, text: "1"},
+        %Cue{from: 1001, to: 1101, text: "2"},
+        %Cue{from: 1102, to: 1602, text: "3"}
+      ]
+
+      assert Cue.align(input) == output
+    end
+  end
+
   describe "split/3" do
     test "does not split short sentences" do
       cue = %Cue{

@@ -22,8 +22,8 @@ defmodule Subtitle.WebVTT do
 
   def unmarshal(vtt) do
     with {:ok, header, body} <- split_header_body(vtt),
-         header <- parse_header(header),
-         offset <- cue_offset(header),
+         header = parse_header(header),
+         offset = cue_offset(header),
          {:ok, cues} <- parse_body(body, offset, []) do
       {:ok, %__MODULE__{header: header, cues: cues}}
     end
@@ -32,7 +32,7 @@ defmodule Subtitle.WebVTT do
   def unmarshal!(data) do
     case unmarshal(data) do
       {:ok, vtt} -> vtt
-      {:error, reason} -> raise ArgumentError, reason
+      {:error, reason, _vtt} -> raise ArgumentError, to_string(reason)
     end
   end
 

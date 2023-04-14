@@ -12,11 +12,11 @@ defmodule Subtitle.Cue do
           {:min_length, pos_integer()}
           | {:max_length, pos_integer()}
 
-  @doc "Returns the duration of the cue"
+  @doc "Returns the duration of the cue."
   @spec duration(t()) :: pos_integer()
   def duration(cue), do: cue.to - cue.from
 
-  @doc "Splits a cue into multiple short lines"
+  @doc "Splits a cue into multiple single-line cues."
   @spec split(t(), [split_option()]) :: [t()]
   def split(cue, opts \\ []) do
     opts = Keyword.validate!(opts, min_length: 10, max_length: 37)
@@ -29,6 +29,59 @@ defmodule Subtitle.Cue do
       |> wrap_words(opts[:max_length])
       |> join_words(opts[:min_length], opts[:max_length])
       |> build_lines(cue.from, cue.to)
+    end
+  end
+
+  @doc """
+  Extend cue to last at least `min_duration`.
+  May produce overlapping cues that can be fixed by calling `__MODULE__.align/1`.
+  """
+  @spec extend(t(), non_neg_integer()) :: t()
+  def extend(cue, min_duration) do
+    if duration(cue) < min_duration do
+      %{cue | to: cue.from + min_duration}
+    else
+      cue
+    end
+  end
+
+  @doc """
+  Cuts the duration to at most `max_duration`.
+  """
+  @spec cut(t(), pos_integer()) :: t()
+  def cut(cue, max_duration) do
+    if duration(cue) > max_duration do
+      %{cue | to: cue.from + max_duration}
+    else
+      cue
+    end
+  end
+
+  @doc """
+  Transforms cue into a temporarily ordered sequence of cues,
+  preserving their duration. It adds 1ms between overapping cues.
+  """
+  @spec align([t()]) :: [t()]
+  def align(cues) do
+    if length(cues) > 1 do
+      {prev, next} = Enum.split(cues, 1)
+      do_align(next, prev)
+    else
+      cues
+    end
+  end
+
+  defp do_align([], acc), do: Enum.reverse(acc)
+
+  defp do_align([right | rest], [left | acc]) do
+    if left.to >= right.from do
+      from = left.to + 1
+      to = from + duration(right)
+      right = %{right | from: from, to: to}
+
+      do_align(rest, [right, left | acc])
+    else
+      do_align(rest, [right, left | acc])
     end
   end
 
