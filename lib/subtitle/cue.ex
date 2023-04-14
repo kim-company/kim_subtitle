@@ -12,6 +12,10 @@ defmodule Subtitle.Cue do
           {:min_length, pos_integer()}
           | {:max_length, pos_integer()}
 
+  @doc "Returns the duration of the cue"
+  @spec duration(t()) :: pos_integer()
+  def duration(cue), do: cue.to - cue.from
+
   @doc "Splits a cue into multiple short lines"
   @spec split(t(), [split_option()]) :: [t()]
   def split(cue, opts \\ []) do
@@ -81,19 +85,18 @@ defmodule Subtitle.Cue do
   end
 
   defp build_lines(lines, from, to) do
-    total_duration = to - from
     chars = Enum.reduce(lines, 0, fn line, total -> String.length(line) + total end)
-    char_duration = total_duration / chars
+    char_duration = (to - from) / chars
 
     lines
-    |> Enum.map_reduce(0, fn line, from ->
-      to = round(from + char_duration * String.length(line))
+    |> Enum.map_reduce(0, fn line, s_from ->
+      s_to = round(s_from + char_duration * String.length(line))
 
       {%__MODULE__{
          text: line,
-         from: from,
-         to: if(to == total_duration, do: to, else: to - 1)
-       }, to}
+         from: s_from,
+         to: if(s_to == to, do: s_to, else: s_to - 1)
+       }, s_to}
     end)
     |> elem(0)
   end
