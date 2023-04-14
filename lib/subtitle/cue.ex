@@ -8,16 +8,22 @@ defmodule Subtitle.Cue do
           to: pos_integer()
         }
 
+  @type split_option ::
+          {:min_length, pos_integer()}
+          | {:max_length, pos_integer()}
+
   @doc "Splits a cue into multiple short lines"
-  @spec split(t(), pos_integer(), pos_integer()) :: [t()]
-  def split(cue, min_length, max_length) do
-    if String.length(cue.text) <= max_length do
+  @spec split(t(), [split_option()]) :: [t()]
+  def split(cue, opts \\ []) do
+    opts = Keyword.validate!(opts, min_length: 10, max_length: 37)
+
+    if String.length(cue.text) <= opts[:max_length] do
       [cue]
     else
       cue.text
       |> split_words()
-      |> wrap_words(max_length)
-      |> join_words(min_length, max_length)
+      |> wrap_words(opts[:max_length])
+      |> join_words(opts[:min_length], opts[:max_length])
       |> build_lines(cue.from, cue.to)
     end
   end

@@ -37,7 +37,7 @@ defmodule Subtitle.CueTest do
         to: 2000
       }
 
-      assert Cue.split(cue, 10, 37) == [cue]
+      assert Cue.split(cue, min_length: 10, max_length: 37) == [cue]
     end
 
     test "wraps very long words" do
@@ -53,7 +53,7 @@ defmodule Subtitle.CueTest do
         %Cue{from: 1486, to: 2000, text: "nenhören."}
       ]
 
-      assert Cue.split(input, 10, 15) == expected
+      assert Cue.split(input, min_length: 10, max_length: 15) == expected
     end
 
     test "splits a long sentence into multiple lines" do
@@ -68,7 +68,7 @@ defmodule Subtitle.CueTest do
         %Cue{from: 1111, to: 2000, text: "von ihnen hören."}
       ]
 
-      assert Cue.split(input, 10, 32) == expected
+      assert Cue.split(input, min_length: 10, max_length: 32) == expected
     end
 
     test "splits a sentence that fits into mutliple lines" do
@@ -78,7 +78,7 @@ defmodule Subtitle.CueTest do
         to: 2000
       }
 
-      assert Cue.split(input, 10, 37) == [input]
+      assert Cue.split(input, min_length: 10, max_length: 37) == [input]
     end
   end
 end
