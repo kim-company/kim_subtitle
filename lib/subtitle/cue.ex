@@ -1,6 +1,8 @@
 defmodule Subtitle.Cue do
   defstruct [:from, :to, :text, id: ""]
 
+  @max_distance_ms 10
+
   @type t :: %__MODULE__{
           text: String.t(),
           id: String.t(),
@@ -11,6 +13,45 @@ defmodule Subtitle.Cue do
   @type split_option ::
           {:min_length, pos_integer()}
           | {:max_length, pos_integer()}
+
+  @type merge_option ::
+          {:max_lines, pos_integer()}
+          | {:max_duration, pos_integer()}
+
+  @doc """
+  Merges two cues given the following conditions:
+  * The number of lines do not exceed `opts.max_lines`
+  * The distance between the two cues is less than `@max_distance_ms`.
+  * The duration of the cues does not exceed `opts.max_duration`
+
+  The cues must be sorted by time and should not overlap.
+  """
+  @spec merge(t(), t(), [merge_option()]) :: {:ok, t()} | {:error, atom()}
+  def merge(cue1, cue2, opts \\ []) do
+    opts = Keyword.validate!(opts, max_lines: 2, max_duration: 8000)
+    cue1_lines = String.split(cue1.text, "\n")
+    cue2_lines = String.split(cue2.text, "\n")
+
+    cond do
+      length(cue1_lines) + length(cue2_lines) > opts[:max_lines] ->
+        {:error, :too_many_lines}
+
+      cue2.from - cue1.to > @max_distance_ms ->
+        {:error, :gap_too_big}
+
+      cue2.to - cue1.from > opts[:max_duration] ->
+        {:error, :max_duration_exceeded}
+
+      true ->
+        cue = %__MODULE__{
+          text: Enum.join(cue1_lines ++ cue2_lines, "\n"),
+          from: cue1.from,
+          to: cue2.to
+        }
+
+        {:ok, cue}
+    end
+  end
 
   @doc "Returns the duration of the cue."
   @spec duration(t()) :: pos_integer()

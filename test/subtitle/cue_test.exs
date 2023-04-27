@@ -3,6 +3,42 @@ defmodule Subtitle.CueTest do
 
   alias Subtitle.Cue
 
+  describe "merge/3" do
+    test "merges cues if its ok" do
+      cue1 = %Cue{from: 0, to: 10, text: "Hello, how are you?"}
+      cue2 = %Cue{from: 11, to: 20, text: "I'm fine. Thanks"}
+
+      expected = %Cue{
+        text: "Hello, how are you?\nI'm fine. Thanks",
+        from: 0,
+        to: 20
+      }
+
+      assert Cue.merge(cue1, cue2) == {:ok, expected}
+    end
+
+    test "does not merge cues if there are too many lines" do
+      cue1 = %Cue{from: 0, to: 10, text: "Hello, how are you?\nBad."}
+      cue2 = %Cue{from: 11, to: 20, text: "I'm fine. Thanks"}
+
+      assert Cue.merge(cue1, cue2, max_lines: 2) == {:error, :too_many_lines}
+    end
+
+    test "does not merge cues if duration exceeds the maximum" do
+      cue1 = %Cue{from: 0, to: 10, text: "Hello, how are you?"}
+      cue2 = %Cue{from: 11, to: 20, text: "I'm fine. Thanks"}
+
+      assert Cue.merge(cue1, cue2, max_duration: 15) == {:error, :max_duration_exceeded}
+    end
+
+    test "does not merge if gap between cues is to big" do
+      cue1 = %Cue{from: 0, to: 10, text: "Hello, how are you?"}
+      cue2 = %Cue{from: 30, to: 40, text: "I'm fine. Thanks"}
+
+      assert Cue.merge(cue1, cue2) == {:error, :gap_too_big}
+    end
+  end
+
   describe "tidy/1" do
     test "does not merge single cue" do
       input = [%Cue{from: 0, to: 3, text: "- What?"}]
