@@ -1,10 +1,10 @@
 defmodule Subtitle.Cue.Builder do
   alias Subtitle.Cue
 
-  defstruct [:pending, :min_length, :max_length, :max_lines, :min_duration, :max_duration]
+  defstruct [:pending, :last, :min_length, :max_length, :max_lines, :min_duration, :max_duration]
 
   @type t :: %__MODULE__{
-          pending: [Cue.t()],
+          pending: Cue.t() | nil,
           min_length: non_neg_integer(),
           max_length: pos_integer(),
           min_duration: pos_integer(),
@@ -30,7 +30,8 @@ defmodule Subtitle.Cue.Builder do
       )
 
     %__MODULE__{
-      pending: [],
+      pending: nil,
+      last: nil,
       min_length: opts[:min_length],
       max_length: opts[:max_length],
       min_duration: opts[:min_duration],
@@ -39,42 +40,69 @@ defmodule Subtitle.Cue.Builder do
     }
   end
 
-  @doc "Adds a new sentence and maybe returns built cues."
-  @spec put(t(), Cue.t()) :: t()
-  def put(builder, cue) do
-    lines = Cue.split(cue)
-    Map.update!(builder, :pending, &Enum.concat(&1, lines))
-  end
+  @doc "Adds a new cue and maybe returns built cues."
+  @spec put_and_get(t(), Cue.t() | [Cue.t()]) :: {t(), [Cue.t()]}
+  def put_and_get(builder, cue_or_cues) do
+    cues =
+      cue_or_cues
+      |> List.wrap()
+      |> Enum.flat_map(&Cue.split/1)
 
-  @doc "Builds the cues based on the lines in the buffer."
-  @spec build_cues(t()) :: {t(), [Cue.t()]}
-  def build_cues(%{pending: []} = builder), do: {builder, []}
+    cues = if builder.pending, do: [builder.pending | cues], else: cues
 
-  def build_cues(builder) do
-    put_line_opts = [max_lines: builder.max_lines, max_duration: builder.max_duration]
+    merge_opts = [max_lines: builder.max_lines, max_duration: builder.max_duration]
+    [pending | done] = merge_cues(cues, merge_opts)
 
-    [pending | done] =
-      builder.pending
-      |> tl()
-      |> Enum.reduce([hd(builder.pending)], fn next, [cur | done] ->
-        case Cue.merge(cur, next, put_line_opts) do
-          {:ok, cue} ->
-            [cue | done]
+    cues = Enum.reverse(done)
+    cues = finalize_cues(builder, cues)
 
-          {:error, _error} ->
-            [next, cur | done]
-        end
-      end)
+    builder = %{
+      builder
+      | pending: pending,
+        last: List.last(cues, builder.last)
+    }
 
-    # TODO: Add some logic if the pending cue should be emitted right away or not.
-    # Either its near to max duration, has reached the lines or maybe its already in the past.
-    builder = %{builder | pending: [pending]}
-    {builder, Enum.reverse(done)}
+    {builder, cues}
   end
 
   @doc "Flushes the pending cue."
-  # @spec flush(t()) :: {t(), Cue.t() | nil}
-  # def flush(builder) do
-  #   {builder, builder.pending}
-  # end
+  @spec flush(t()) :: {t(), Cue.t() | nil}
+  def flush(builder) when builder.pending == nil, do: {builder, nil}
+
+  def flush(builder) do
+    [cue] = finalize_cues(builder, [builder.pending])
+    builder = %{builder | pending: nil, last: cue}
+    {builder, cue}
+  end
+
+  @spec merge_cues([Cue.t()], [Cue.merge_option()]) :: [Cue.t()]
+  defp merge_cues(cues, opts) when cues != [] do
+    cues
+    |> tl()
+    |> Enum.reduce([hd(cues)], fn next, [cur | done] ->
+      case Cue.merge(cur, next, opts) do
+        {:ok, cue} ->
+          [cue | done]
+
+        {:error, _error} ->
+          [next, cur | done]
+      end
+    end)
+  end
+
+  @spec finalize_cues(t(), [Cue.t()]) :: [Cue.t()]
+  defp finalize_cues(builder, cues) do
+    cues =
+      cues
+      |> Enum.map(&Cue.cut(&1, builder.max_duration))
+      |> Enum.map(&Cue.extend(&1, builder.min_duration))
+
+    if builder.last do
+      [builder.last | cues]
+      |> Cue.align()
+      |> tl()
+    else
+      Cue.align(cues)
+    end
+  end
 end

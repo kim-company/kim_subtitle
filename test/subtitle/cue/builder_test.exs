@@ -16,47 +16,61 @@ defmodule Subtitle.Cue.BuilderTest do
     end
   end
 
-  describe "put/1" do
-    test "accepts a cue as an input" do
-      b = Builder.new()
-      Builder.put(b, %Cue{text: "Hello", from: 0, to: 1000})
-    end
-  end
-
-  describe "build_cues/1" do
+  describe "put_and_get/2" do
     test "merges successfully two lines" do
-      b =
+      {_builder, cues} =
         Builder.new(min_duration: 0, max_duration: 1000)
-        |> Builder.put(%Cue{text: "Hallo wie geht es dir?", from: 0, to: 400})
-        |> Builder.put(%Cue{text: "Hallo", from: 401, to: 900})
-        |> Builder.put(%Cue{text: "I am incomplete", from: 901, to: 1000})
+        |> Builder.put_and_get([
+          %Cue{text: "Hallo wie geht es dir?", from: 0, to: 400},
+          %Cue{text: "Hallo", from: 401, to: 900},
+          %Cue{text: "I am incomplete", from: 901, to: 1000}
+        ])
 
       expected = [%Cue{text: "Hallo wie geht es dir?\nHallo", from: 0, to: 900}]
-      assert {_, ^expected} = Builder.build_cues(b)
+      assert cues == expected
     end
 
     test "returns the single buffer" do
-      b =
+      {_builder, cues} =
         Builder.new(min_duration: 0, max_duration: 1000)
-        |> Builder.put(%Cue{text: "Hallo wie geht es dir?", from: 0, to: 400})
-        |> Builder.put(%Cue{text: "I am incomplete", from: 1000, to: 5000})
+        |> Builder.put_and_get([
+          %Cue{text: "Hallo wie geht es dir?", from: 0, to: 400},
+          %Cue{text: "I am incomplete", from: 1000, to: 5000}
+        ])
 
       expected = [%Cue{text: "Hallo wie geht es dir?", from: 0, to: 400}]
-      assert {_, ^expected} = Builder.build_cues(b)
+      assert cues == expected
     end
 
-    test "returns an empty list if pending is null" do
-      {_b, cues} = Builder.new() |> Builder.build_cues()
-      assert cues == []
+    test "extends and aligns cues to the minimum duration" do
+      builder = Builder.new(min_duration: 1000, max_duration: 9999)
+
+      {builder, cues} =
+        Builder.put_and_get(builder, [
+          %Cue{text: "Line1\nLine2", from: 0, to: 500},
+          %Cue{text: "Line1\nLine2", from: 501, to: 1000}
+        ])
+
+      assert [%Cue{from: 0, to: 1000}] = cues
+
+      {_builder, cue} = Builder.flush(builder)
+      assert %Cue{from: 1001, to: 2001} = cue
     end
   end
 
-  # describe "flush/1" do
-  #   test "flushes the empty cues" do
-  #     cue = %Cue{text: "Hello", from: 0, to: 400}
-  #     b = Builder.new() |> Builder.put(cue)
+  describe "flush/1" do
+    test "when there is no pending cue" do
+      builder = Builder.new()
+      assert Builder.flush(builder) == {builder, nil}
+    end
 
-  #     assert {_b, ^cue} = Builder.flush(b)
-  #   end
-  # end
+    test "when there is a pending cue" do
+      cue = %Cue{text: "Hello", from: 0, to: 2000}
+      builder = Builder.new()
+      {builder, []} = Builder.put_and_get(builder, cue)
+
+      assert {builder, ^cue} = Builder.flush(builder)
+      assert Builder.flush(builder) == {builder, nil}
+    end
+  end
 end
