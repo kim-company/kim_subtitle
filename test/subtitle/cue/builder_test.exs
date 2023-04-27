@@ -29,6 +29,7 @@ defmodule Subtitle.Cue.BuilderTest do
         Builder.new(min_duration: 0, max_duration: 1000)
         |> Builder.put(%Cue{text: "Hallo wie geht es dir?", from: 0, to: 400})
         |> Builder.put(%Cue{text: "Hallo", from: 401, to: 900})
+        |> Builder.put(%Cue{text: "I am incomplete", from: 901, to: 1000})
 
       expected = [%Cue{text: "Hallo wie geht es dir?\nHallo", from: 0, to: 900}]
       assert {_, ^expected} = Builder.build_cues(b)
@@ -38,6 +39,7 @@ defmodule Subtitle.Cue.BuilderTest do
       b =
         Builder.new(min_duration: 0, max_duration: 1000)
         |> Builder.put(%Cue{text: "Hallo wie geht es dir?", from: 0, to: 400})
+        |> Builder.put(%Cue{text: "I am incomplete", from: 1000, to: 5000})
 
       expected = [%Cue{text: "Hallo wie geht es dir?", from: 0, to: 400}]
       assert {_, ^expected} = Builder.build_cues(b)
@@ -48,4 +50,13 @@ defmodule Subtitle.Cue.BuilderTest do
       assert cues == []
     end
   end
+
+  # describe "flush/1" do
+  #   test "flushes the empty cues" do
+  #     cue = %Cue{text: "Hello", from: 0, to: 400}
+  #     b = Builder.new() |> Builder.put(cue)
+
+  #     assert {_b, ^cue} = Builder.flush(b)
+  #   end
+  # end
 end

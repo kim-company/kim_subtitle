@@ -51,32 +51,30 @@ defmodule Subtitle.Cue.Builder do
   def build_cues(%{pending: []} = builder), do: {builder, []}
 
   def build_cues(builder) do
-    [pending | lines] = builder.pending
     put_line_opts = [max_lines: builder.max_lines, max_duration: builder.max_duration]
 
-    %{done: done, pending: pending} =
-      Enum.reduce(lines, %{done: [], pending: pending}, fn line, state ->
-        case Cue.merge(state.pending, line, put_line_opts) do
+    [pending | done] =
+      builder.pending
+      |> tl()
+      |> Enum.reduce([hd(builder.pending)], fn next, [cur | done] ->
+        case Cue.merge(cur, next, put_line_opts) do
           {:ok, cue} ->
-            %{state | pending: cue}
+            [cue | done]
 
           {:error, _error} ->
-            %{state | pending: line, done: [state.pending | state.done]}
+            [next, cur | done]
         end
       end)
 
-    # TODO: Add some logic if the pending cue should be emitted or not.
+    # TODO: Add some logic if the pending cue should be emitted right away or not.
     # Either its near to max duration, has reached the lines or maybe its already in the past.
-    builder = %{builder | pending: pending}
-    cues = Enum.reverse(done)
-
-    {builder, cues}
+    builder = %{builder | pending: [pending]}
+    {builder, Enum.reverse(done)}
   end
 
-  # @doc "Flushes all pending lines and returns completed cues."
-  # @spec flush(t()) :: {t(), [Cue.t()]}
+  @doc "Flushes the pending cue."
+  # @spec flush(t()) :: {t(), Cue.t() | nil}
   # def flush(builder) do
-  #   # TODO
-  #   {builder, []}
+  #   {builder, builder.pending}
   # end
 end
