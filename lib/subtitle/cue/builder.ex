@@ -43,10 +43,12 @@ defmodule Subtitle.Cue.Builder do
   @doc "Adds a new cue and maybe returns built cues."
   @spec put_and_get(t(), Cue.t() | [Cue.t()]) :: {t(), [Cue.t()]}
   def put_and_get(builder, cue_or_cues) do
+    split_opts = [min_length: builder.min_length, max_length: builder.max_length]
+
     cues =
       cue_or_cues
       |> List.wrap()
-      |> Enum.flat_map(&Cue.split/1)
+      |> Enum.flat_map(&Cue.split(&1, split_opts))
 
     cues = if builder.pending, do: [builder.pending | cues], else: cues
 
