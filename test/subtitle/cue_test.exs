@@ -72,6 +72,11 @@ defmodule Subtitle.CueTest do
   end
 
   describe "split/3" do
+    test "trims and discards empty cues" do
+      cue = %Cue{text: " ", from: 0, to: 200}
+      assert Cue.split(cue) == []
+    end
+
     test "does not split short sentences" do
       cue = %Cue{
         text: "Keine Nebengeräusche",

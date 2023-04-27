@@ -20,15 +20,21 @@ defmodule Subtitle.Cue do
   @spec split(t(), [split_option()]) :: [t()]
   def split(cue, opts \\ []) do
     opts = Keyword.validate!(opts, min_length: 10, max_length: 37)
+    cue = Map.update!(cue, :text, &String.trim/1)
 
-    if String.length(cue.text) <= opts[:max_length] do
-      [cue]
-    else
-      cue.text
-      |> split_words()
-      |> wrap_words(opts[:max_length])
-      |> join_words(opts[:min_length], opts[:max_length])
-      |> build_lines(cue.from, cue.to)
+    cond do
+      cue.text == "" ->
+        []
+
+      String.length(cue.text) <= opts[:max_length] ->
+        [cue]
+
+      true ->
+        cue.text
+        |> split_words()
+        |> wrap_words(opts[:max_length])
+        |> join_words(opts[:min_length], opts[:max_length])
+        |> build_lines(cue.from, cue.to)
     end
   end
 
