@@ -30,6 +30,19 @@ defmodule Subtitle.Cue.BuilderTest do
       assert cues == expected
     end
 
+    test "Keeps the start duration of the cue correct" do
+      {_builder, cues} =
+        Builder.new(min_duration: 0, max_duration: 1000)
+        |> Builder.put_and_get([
+          %Cue{text: "Hallo wie geht es dir?", from: 1000, to: 1400},
+          %Cue{text: "Hallo", from: 1401, to: 1900},
+          %Cue{text: "I am incomplete", from: 1901, to: 2000}
+        ])
+
+      expected = [%Cue{text: "Hallo wie geht es dir?\nHallo", from: 1000, to: 1900}]
+      assert cues == expected
+    end
+
     test "returns the single buffer" do
       {_builder, cues} =
         Builder.new(min_duration: 0, max_duration: 1000)
