@@ -189,7 +189,7 @@ defmodule Subtitle.Cue do
     char_duration = (to - from) / chars
 
     lines
-    |> Enum.map_reduce(0, fn line, s_from ->
+    |> Enum.map_reduce(from, fn line, s_from ->
       s_to = round(s_from + char_duration * String.length(line))
 
       {%__MODULE__{

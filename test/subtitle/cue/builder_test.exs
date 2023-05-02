@@ -30,17 +30,28 @@ defmodule Subtitle.Cue.BuilderTest do
       assert cues == expected
     end
 
-    test "Keeps the start duration of the cue correct" do
-      {_builder, cues} =
-        Builder.new(min_duration: 0, max_duration: 1000)
-        |> Builder.put_and_get([
-          %Cue{text: "Hallo wie geht es dir?", from: 1000, to: 1400},
-          %Cue{text: "Hallo", from: 1401, to: 1900},
-          %Cue{text: "I am incomplete", from: 1901, to: 2000}
-        ])
+    test "keeps the start duration of the cue correct" do
+      {builder, cues} =
+        Builder.new(min_duration: 0, max_duration: 9999)
+        |> Builder.put_and_get(%Subtitle.Cue{
+          from: 1447,
+          to: 5015,
+          text: "Volete offrire al vostro cliente finale diversi servizi e video come pacchetto?"
+        })
 
-      expected = [%Cue{text: "Hallo wie geht es dir?\nHallo", from: 1000, to: 1900}]
+      expected = [
+        %Cue{text: "Volete offrire al vostro\ncliente finale diversi", from: 1447, to: 3606}
+      ]
+
       assert cues == expected
+
+      {_builder, cue} = Builder.flush(builder)
+
+      assert cue == %Subtitle.Cue{
+               from: 3607,
+               to: 5015,
+               text: "servizi e video come\npacchetto?"
+             }
     end
 
     test "returns the single buffer" do
