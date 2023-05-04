@@ -131,9 +131,9 @@ defmodule Subtitle.CueTest do
       }
 
       expected = [
-        %Cue{from: 0, to: 628, text: "KeineNeben-"},
-        %Cue{from: 629, to: 1485, text: "geräuschevonih-"},
-        %Cue{from: 1486, to: 2000, text: "nenhören."}
+        %Cue{from: 0, to: 511, text: "KeineNeben-"},
+        %Cue{from: 512, to: 1209, text: "geräuschevonih-"},
+        %Cue{from: 1210, to: 2000, text: "nenhören."}
       ]
 
       assert Cue.split(input, min_length: 10, max_length: 15) == expected
@@ -147,8 +147,8 @@ defmodule Subtitle.CueTest do
       }
 
       expected = [
-        %Cue{from: 0, to: 1110, text: "Keine Nebengeräusche"},
-        %Cue{from: 1111, to: 2000, text: "von ihnen hören."}
+        %Cue{from: 0, to: 908, text: "Keine Nebengeräusche"},
+        %Cue{from: 909, to: 2000, text: "von ihnen hören."}
       ]
 
       assert Cue.split(input, min_length: 10, max_length: 32) == expected

@@ -40,7 +40,7 @@ defmodule Subtitle.Cue.BuilderTest do
         })
 
       expected = [
-        %Cue{text: "Volete offrire al vostro\ncliente finale diversi", from: 1447, to: 3606}
+        %Cue{text: "Volete offrire al vostro\ncliente finale diversi", from: 1447, to: 3399}
       ]
 
       assert cues == expected
@@ -48,7 +48,7 @@ defmodule Subtitle.Cue.BuilderTest do
       {_builder, cue} = Builder.flush(builder)
 
       assert cue == %Subtitle.Cue{
-               from: 3607,
+               from: 3400,
                to: 5015,
                text: "servizi e video come\npacchetto?"
              }

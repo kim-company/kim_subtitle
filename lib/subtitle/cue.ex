@@ -75,7 +75,7 @@ defmodule Subtitle.Cue do
         |> split_words()
         |> wrap_words(opts[:max_length])
         |> join_words(opts[:min_length], opts[:max_length])
-        |> build_lines(cue.from, cue.to)
+        |> add_timings(cue.from, cue.to)
     end
   end
 
@@ -116,6 +116,41 @@ defmodule Subtitle.Cue do
     else
       cues
     end
+  end
+
+  @doc "Adds the timings to all the lines by calculating them."
+  def add_timings(lines, from, to) do
+    lines_with_weights =
+      Enum.map(lines, fn line ->
+        weight =
+          line
+          |> String.graphemes()
+          |> Enum.reduce(0, fn
+            char, sum when char in [".", ",", ";", ":", "!", "?"] -> sum + 9
+            _char, sum -> sum + 1
+          end)
+
+        {line, weight}
+      end)
+
+    total_weight =
+      lines_with_weights
+      |> Enum.map(&elem(&1, 1))
+      |> Enum.sum()
+
+    weight_duration = (to - from) / total_weight
+
+    lines_with_weights
+    |> Enum.map_reduce(from, fn {line, weight}, s_from ->
+      s_to = round(s_from + weight_duration * weight)
+
+      {%__MODULE__{
+         text: line,
+         from: s_from,
+         to: if(s_to == to, do: s_to, else: s_to - 1)
+       }, s_to}
+    end)
+    |> elem(0)
   end
 
   defp do_align([], acc), do: Enum.reverse(acc)
@@ -182,23 +217,6 @@ defmodule Subtitle.Cue do
   defp hard_wrap(word, max_length) do
     {pre, rest} = String.split_at(word, max_length - 1)
     ["#{pre}-" | soft_wrap(rest, max_length)]
-  end
-
-  defp build_lines(lines, from, to) do
-    chars = Enum.reduce(lines, 0, fn line, total -> String.length(line) + total end)
-    char_duration = (to - from) / chars
-
-    lines
-    |> Enum.map_reduce(from, fn line, s_from ->
-      s_to = round(s_from + char_duration * String.length(line))
-
-      {%__MODULE__{
-         text: line,
-         from: s_from,
-         to: if(s_to == to, do: s_to, else: s_to - 1)
-       }, s_to}
-    end)
-    |> elem(0)
   end
 
   # A sentence is pretty if it has at least `min_length` chars,
