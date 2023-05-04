@@ -20,17 +20,19 @@ defmodule Subtitle.WebVTT do
 
   def mime(), do: "text/vtt"
 
-  def unmarshal(vtt) do
+  def unmarshal(vtt, opts \\ []) do
+    add_offset? = Keyword.get(opts, :add_offset?, true)
+
     with {:ok, header, body} <- split_header_body(vtt),
          header = parse_header(header),
-         offset = cue_offset(header),
+         offset = if(add_offset?, do: cue_offset(header), else: 0),
          {:ok, cues} <- parse_body(body, offset, []) do
       {:ok, %__MODULE__{header: header, cues: cues}}
     end
   end
 
-  def unmarshal!(data) do
-    case unmarshal(data) do
+  def unmarshal!(data, opts \\ []) do
+    case unmarshal(data, opts) do
       {:ok, vtt} -> vtt
       {:error, reason, _vtt} -> raise ArgumentError, to_string(reason)
     end
