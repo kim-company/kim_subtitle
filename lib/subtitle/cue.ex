@@ -18,6 +18,48 @@ defmodule Subtitle.Cue do
           {:max_lines, pos_integer()}
           | {:max_duration, pos_integer()}
 
+  @type to_paragraphs_option ::
+          {:silence, pos_integer()}
+
+  @doc """
+  Creates a list of paragraphs obtained from the text of the cues.
+  Merges together cues that have no silence in between. Silence
+  is configurable through the `opts.silence` option, which defaults
+  to 1ms.
+  """
+  @spec to_paragraphs([t()], [to_paragraphs_option()]) :: [String.t()]
+  def to_paragraphs(cues, opts \\ []) do
+    cues
+    |> to_paragraphs_lazy(opts)
+    |> Enum.into([])
+  end
+
+  @doc """
+  Lazy version of to_paragraphs/2.
+  """
+  @spec to_paragraphs_lazy(Stream.t(), Keyword.t()) :: Stream.t()
+  def to_paragraphs_lazy(cues, opts \\ []) do
+    opts = Keyword.validate!(opts, silence: 1)
+    silence = Keyword.fetch!(opts, :silence)
+
+    reducer =
+      fn next, [] ->
+          {[], [next]}
+        next, acc = [prev | _] ->
+          if next.from - prev.to > silence do
+            {[acc], [next]}
+          else
+            {[], [next | acc]}
+          end
+        end
+
+    cues
+    |> Stream.transform(fn -> [] end, reducer, fn acc -> {[acc], []} end, fn _ -> :ok end)
+    |> Stream.map(&Enum.map(&1, fn cue -> cue.text end))
+    |> Stream.map(&Enum.reverse/1)
+    |> Stream.map(&Enum.join(&1, " "))
+  end
+
   @doc """
   Merges two cues given the following conditions:
   * The number of lines do not exceed `opts.max_lines`

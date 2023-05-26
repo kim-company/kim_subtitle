@@ -164,4 +164,49 @@ defmodule Subtitle.CueTest do
       assert Cue.split(input, min_length: 10, max_length: 37) == [input]
     end
   end
+
+  describe "to_paragraphs/1" do
+    test "leaves full sentences untouched" do
+      input = %Cue{
+        text: "Keine Nebengeräusche von ihnen hören.",
+        from: 0,
+        to: 2000
+      }
+      assert Cue.to_paragraphs([input]) == [input.text]
+    end
+
+    test "joins cues that are separated by less than 1ms" do
+      input = [
+        %Cue{from: 0, to: 908, text: "Keine Nebengeräusche"},
+        %Cue{from: 909, to: 2000, text: "von ihnen hören."}
+      ]
+
+      assert Cue.to_paragraphs(input) == join_cue_text(input)
+    end
+
+    test "does not join cues that are separated by more than 1ms" do
+      input = [
+        %Cue{from: 0, to: 907, text: "Keine Nebengeräusche"},
+        %Cue{from: 909, to: 2000, text: "von ihnen hören."}
+      ]
+
+      assert Enum.map(input, & &1.text) == ["Keine Nebengeräusche", "von ihnen hören."]
+
+      assert Cue.to_paragraphs(input) == Enum.map(input, & &1.text)
+    end
+
+    test "silence is tunable" do
+      input = [
+        %Cue{from: 0, to: 907, text: "Keine Nebengeräusche"},
+        %Cue{from: 1908, to: 2000, text: "von ihnen hören."}
+      ]
+
+      assert Cue.to_paragraphs(input, silence: 1001) == join_cue_text(input)
+      assert Cue.to_paragraphs(input, silence: 1000) == Enum.map(input, & &1.text)
+    end
+
+    defp join_cue_text(cues) do
+      Enum.map(cues, & &1.text) |> Enum.join(" ") |> List.wrap()
+    end
+  end
 end
