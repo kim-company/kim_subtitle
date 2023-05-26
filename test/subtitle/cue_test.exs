@@ -175,6 +175,15 @@ defmodule Subtitle.CueTest do
       assert Cue.to_paragraphs([input]) == [input.text]
     end
 
+    test "removes newline characters" do
+      input = %Cue{
+        text: "Keine Nebengeräusche\nvon ihnen hören.\n",
+        from: 0,
+        to: 2000
+      }
+      assert Cue.to_paragraphs([input]) == ["Keine Nebengeräusche von ihnen hören."]
+    end
+
     test "joins cues that are separated by less than 1ms" do
       input = [
         %Cue{from: 0, to: 908, text: "Keine Nebengeräusche"},

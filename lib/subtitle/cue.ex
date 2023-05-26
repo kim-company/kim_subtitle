@@ -31,13 +31,13 @@ defmodule Subtitle.Cue do
   def to_paragraphs(cues, opts \\ []) do
     cues
     |> to_paragraphs_lazy(opts)
-    |> Enum.into([])
+    |> Enum.to_list()
   end
 
   @doc """
   Lazy version of to_paragraphs/2.
   """
-  @spec to_paragraphs_lazy(Stream.t(), Keyword.t()) :: Stream.t()
+  @spec to_paragraphs_lazy(Enumerable.t(), Keyword.t()) :: Stream.t()
   def to_paragraphs_lazy(cues, opts \\ []) do
     opts = Keyword.validate!(opts, silence: 1)
     silence = Keyword.fetch!(opts, :silence)
@@ -56,8 +56,13 @@ defmodule Subtitle.Cue do
     cues
     |> Stream.transform(fn -> [] end, reducer, fn acc -> {[acc], []} end, fn _ -> :ok end)
     |> Stream.map(&Enum.map(&1, fn cue -> cue.text end))
-    |> Stream.map(&Enum.reverse/1)
-    |> Stream.map(&Enum.join(&1, " "))
+    |> Stream.map(fn acc ->
+      acc
+      |> Enum.reverse()
+      |> Enum.join(" ")
+      |> String.replace("\n", " ")
+      |> String.trim()
+    end)
   end
 
   @doc """
