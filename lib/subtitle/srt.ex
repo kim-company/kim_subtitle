@@ -7,6 +7,8 @@ defmodule Subtitle.SRT do
   defstruct cues: []
 
   def unmarshal(srt, _opts \\ []) do
+    srt = String.replace(srt, "\r", "")
+
     with {:ok, cues} <- parse_body(srt, []) do
       {:ok, %__MODULE__{cues: cues}}
     end

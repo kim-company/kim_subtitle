@@ -21,6 +21,7 @@ defmodule Subtitle.WebVTT do
   def mime(), do: "text/vtt"
 
   def unmarshal(vtt, opts \\ []) do
+    vtt = String.replace(vtt, "\r", "")
     add_offset? = Keyword.get(opts, :add_offset?, true)
 
     with {:ok, header, body} <- split_header_body(vtt),
