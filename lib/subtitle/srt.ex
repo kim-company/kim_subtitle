@@ -2,6 +2,8 @@ defmodule Subtitle.SRT do
   alias Subtitle.SRT.Timing
   alias Subtitle.Cue
 
+  require Logger
+
   defstruct cues: []
 
   def unmarshal(srt, _opts \\ []) do
@@ -22,34 +24,35 @@ defmodule Subtitle.SRT do
         {:ok, cues}
 
       [block | rest] ->
-        case parse_block(block) do
-          {:ok, cue} ->
-            body = if rest != [], do: List.first(rest), else: ""
-            parse_body(body, [cue | acc])
+        acc =
+          case parse_block(block) do
+            {:ok, cue} ->
+              [cue | acc]
 
-          {:error, reason} ->
-            {:error, reason, body}
-        end
+            {:error, reason} ->
+              Logger.warn("Parse SRT block: #{inspect(reason)}")
+              acc
+          end
+
+        body = if rest != [], do: List.first(rest), else: ""
+        parse_body(body, acc)
     end
   end
 
   defp parse_block(candidate_cue) do
-    {id, rest} =
-      candidate_cue
-      # Happens when a cue with no text is processed before.
-      |> String.trim_leading()
-      |> parse_cue_id()
+    # Happens when a cue with no text is processed before.
+    candidate_cue = String.trim_leading(candidate_cue)
 
-    case parse_timings(rest) do
-      {:ok, from, to, rest} ->
-        {:ok,
-         %Cue{
-           id: id,
-           from: from,
-           to: to,
-           text: String.trim(rest)
-         }}
-
+    with {:ok, id, rest} <- parse_cue_id(candidate_cue),
+         {:ok, from, to, rest} <- parse_timings(rest) do
+      {:ok,
+       %Cue{
+         id: id,
+         from: from,
+         to: to,
+         text: String.trim(rest)
+       }}
+    else
       {:error, reason} ->
         {:error, reason}
     end
@@ -62,9 +65,9 @@ defmodule Subtitle.SRT do
 
       [id_or_timing, body] ->
         if String.contains?(id_or_timing, "-->") do
-          {"", cue}
+          {:ok, "", cue}
         else
-          {id_or_timing, body}
+          {:ok, id_or_timing, body}
         end
     end
   end

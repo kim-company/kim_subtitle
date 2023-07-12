@@ -99,5 +99,21 @@ defmodule Subtitle.SRTTest do
                }
              ] == srt.cues
     end
+
+    test "with invalid input" do
+      input =
+        "01\n0:00:01,621 --> 00:00:02,621\nLSBOZXZlciBkcmluayBsaXF1aWQgbml\n\n02\n0:00:02,621 --> 00:00:02,621\n\n\n"
+
+      assert {:ok, srt} = SRT.unmarshal(input)
+
+      assert [
+               %Subtitle.Cue{
+                 id: "01",
+                 from: Helpers.to_ms(0, 1, 621),
+                 to: Helpers.to_ms(0, 2, 621),
+                 text: ~s/LSBOZXZlciBkcmluayBsaXF1aWQgbml/
+               }
+             ] == srt.cues
+    end
   end
 end
