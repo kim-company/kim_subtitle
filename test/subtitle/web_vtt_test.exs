@@ -2,7 +2,8 @@ defmodule Subtitle.WebVTTTest do
   use ExUnit.Case
 
   alias Subtitle.WebVTT
-  alias Subtitle.WebVTT.{HeaderLine, Timing}
+  alias Subtitle.Helpers
+  alias Subtitle.WebVTT.HeaderLine
 
   describe "unmarshal/1" do
     test "simplest possible" do
@@ -64,20 +65,20 @@ defmodule Subtitle.WebVTTTest do
       assert [
                %Subtitle.Cue{
                  id: "14",
-                 from: Timing.to_ms(1, 14, 815),
-                 to: Timing.to_ms(1, 18, 114),
+                 from: Helpers.to_ms(1, 14, 815),
+                 to: Helpers.to_ms(1, 18, 114),
                  text: ~s/- What?\n- Where are we now?/
                },
                %Subtitle.Cue{
                  id: "15",
-                 from: Timing.to_ms(1, 18, 171),
-                 to: Timing.to_ms(1, 20, 991),
+                 from: Helpers.to_ms(1, 18, 171),
+                 to: Helpers.to_ms(1, 20, 991),
                  text: ~s/- This is big bat country./
                },
                %Subtitle.Cue{
                  id: "16",
-                 from: Timing.to_ms(1, 21, 58),
-                 to: Timing.to_ms(1, 23, 868),
+                 from: Helpers.to_ms(1, 21, 58),
+                 to: Helpers.to_ms(1, 23, 868),
                  text:
                    ~s/- [ Bats Screeching ]\n- They won't get in your hair. They're after the bugs./
                }
@@ -101,14 +102,14 @@ defmodule Subtitle.WebVTTTest do
       assert [
                %Subtitle.Cue{
                  id: "",
-                 from: Timing.to_ms(4, 2, 500),
-                 to: Timing.to_ms(4, 5, 0),
+                 from: Helpers.to_ms(4, 2, 500),
+                 to: Helpers.to_ms(4, 5, 0),
                  text: ~s/J'ai commencé le basket à l'âge de 13, 14 ans/
                },
                %Subtitle.Cue{
                  id: "",
-                 from: Timing.to_ms(4, 5, 1),
-                 to: Timing.to_ms(4, 7, 800),
+                 from: Helpers.to_ms(4, 5, 1),
+                 to: Helpers.to_ms(4, 7, 800),
                  text:
                    ~s|Sur les <i.foreignphrase><lang en>playground</lang></i>, ici à Montpellier|
                }
@@ -134,8 +135,8 @@ defmodule Subtitle.WebVTTTest do
       assert [
                %Subtitle.Cue{
                  id: "",
-                 from: Timing.to_ms(44, 13, 215) + offset,
-                 to: Timing.to_ms(44, 17, 881) + offset,
+                 from: Helpers.to_ms(44, 13, 215) + offset,
+                 to: Helpers.to_ms(44, 17, 881) + offset,
                  text: ~s/Deshalb sollte sollten die Empfehlung\nbis Ende März vorgelegt werden./
                }
              ] == webvtt.cues

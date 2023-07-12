@@ -1,4 +1,6 @@
 defmodule Subtitle.WebVTT.Timing do
+  alias Subtitle.Helpers
+
   # Timings appear in one of the two formats
   # mm:ss.ttt
   # hh:mm:ss.ttt
@@ -8,13 +10,13 @@ defmodule Subtitle.WebVTT.Timing do
   def parse(timing) do
     with [rest, raw_ttt] <- String.split(timing, ".", parts: 2),
          raw_rest_list = String.split(rest, ":"),
-         {:ok, values} <- parse_integers(raw_rest_list ++ [raw_ttt]) do
+         {:ok, values} <- Helpers.parse_integers(raw_rest_list ++ [raw_ttt]) do
       case values do
         [mm, ss, ttt] ->
-          {:ok, to_ms(0, mm, ss, ttt)}
+          {:ok, Helpers.to_ms(0, mm, ss, ttt)}
 
         [hh, mm, ss, ttt] ->
-          {:ok, to_ms(hh, mm, ss, ttt)}
+          {:ok, Helpers.to_ms(hh, mm, ss, ttt)}
 
         _other ->
           :error
@@ -25,19 +27,8 @@ defmodule Subtitle.WebVTT.Timing do
     end
   end
 
-  def to_ms(mm, ss, ttt) do
-    to_ms(0, mm, ss, ttt)
-  end
-
-  def to_ms(hh, mm, ss, ttt) do
-    ttt + ss * 1_000 + mm * 60 * 1000 + hh * 60 * 60 * 1000
-  end
-
   def from_ms(ms) do
-    hours = div(ms, 60 * 60 * 1000)
-    mm = div(ms, 60 * 1000) - hours * 60
-    ss = div(ms, 1000) - mm * 60 - hours * 60 * 60
-    ttt = ms - ss * 1000 - mm * 60 * 1000 - hours * 60 * 60 * 1000
+    [hours, mm, ss, ttt] = Helpers.split_ms(ms)
 
     hours_pad_size = if hours > 99, do: 4, else: 2
     [hours, mm, ss, ttt] = Enum.map([hours, mm, ss, ttt], &to_string/1)
@@ -47,24 +38,5 @@ defmodule Subtitle.WebVTT.Timing do
     ttt = String.pad_leading(ttt, 3, ["0"])
 
     [hours, ":", mm, ":", ss, ".", ttt]
-  end
-
-  defp parse_integers(strings) do
-    maybe_ints =
-      strings
-      |> Enum.map(&Integer.parse/1)
-      |> Enum.map(fn
-        {int, ""} ->
-          int
-
-        _other ->
-          :error
-      end)
-
-    if Enum.member?(maybe_ints, :error) do
-      :error
-    else
-      {:ok, maybe_ints}
-    end
   end
 end
