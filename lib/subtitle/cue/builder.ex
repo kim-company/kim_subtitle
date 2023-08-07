@@ -78,7 +78,9 @@ defmodule Subtitle.Cue.Builder do
   end
 
   @spec merge_cues([Cue.t()], [Cue.merge_option()]) :: [Cue.t()]
-  defp merge_cues(cues, opts) when cues != [] do
+  defp merge_cues([], _opts), do: []
+
+  defp merge_cues(cues, opts) do
     cues
     |> tl()
     |> Enum.reduce([hd(cues)], fn next, [cur | done] ->
