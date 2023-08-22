@@ -1,5 +1,5 @@
 defmodule Subtitle.CueTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Subtitle.Cue
 
@@ -33,7 +33,7 @@ defmodule Subtitle.CueTest do
 
     test "does not merge if gap between cues is to big" do
       cue1 = %Cue{from: 0, to: 10, text: "Hello, how are you?"}
-      cue2 = %Cue{from: 30, to: 40, text: "I'm fine. Thanks"}
+      cue2 = %Cue{from: 300, to: 340, text: "I'm fine. Thanks"}
 
       assert Cue.merge(cue1, cue2) == {:error, :gap_too_big}
     end
@@ -172,6 +172,7 @@ defmodule Subtitle.CueTest do
         from: 0,
         to: 2000
       }
+
       assert Cue.to_paragraphs([input]) == [input.text]
     end
 
@@ -181,6 +182,7 @@ defmodule Subtitle.CueTest do
         from: 0,
         to: 2000
       }
+
       assert Cue.to_paragraphs([input]) == ["Keine Nebengeräusche von ihnen hören."]
     end
 

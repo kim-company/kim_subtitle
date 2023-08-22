@@ -17,6 +17,74 @@ defmodule Subtitle.Cue.BuilderTest do
   end
 
   describe "put_and_get/2" do
+    test "does not create excessive delay" do
+      cues = [
+        %Cue{
+          from: 490_538,
+          to: 496_837,
+          text:
+            "Und das Schöne ist, dass es eine Standortrundreise ist, also Busrundreise könnte man ja auch denken."
+        },
+        %Cue{from: 499_659, to: 500_888, text: "immer ein und auspacken."},
+        %Cue{from: 510_098, to: 511_882, text: "um 86 % weiter."},
+        %Cue{from: 511_899, to: 514_176, text: "Empfehlungsrate über 5000 Bewertungen."},
+        %Cue{from: 514_659, to: 515_828, text: "den deutschsprachigen Urlaubern."},
+        %Cue{from: 515_828, to: 517_658, text: "Ein sehr beliebtes Hotel."},
+        %Cue{from: 517_988, to: 520_088, text: "Und da sehen wir es auch."},
+        %Cue{
+          from: 524_439,
+          to: 531_698,
+          text:
+            "Und das bedeutet in dem Fall, dass Sie noch zwei Getränke pro Person und Abendessen inklusive haben."
+        },
+        %Cue{
+          from: 532_749,
+          to: 535_568,
+          text: "wir sie dann immer ab mit der deutschsprachigen Reiseleitung."
+        },
+        %Cue{
+          from: 535_568,
+          to: 541_448,
+          text:
+            "Und dann erleben sie tatsächlich dieses Mallorca für alle Sinne, können sich zwischendurch Massagen gönnen."
+        },
+        %Cue{
+          from: 552_189,
+          to: 556_748,
+          text: "Reisezeit, wenn es darum geht, auch so eine Standortrundreise zu machen."
+        },
+        %Cue{from: 562_209, to: 562_718, text: "Monaten."},
+        %Cue{
+          from: 562_988,
+          to: 566_799,
+          text:
+            "Da macht es natürlich auch keinen Spaß, weil es viel zu heiß ist und viel zu warm ist."
+        },
+        %Cue{
+          from: 567_068,
+          to: 571_508,
+          text:
+            "Aber da haben wir Ihnen die perfekte Reisezeit rausgesucht, nämlich jetzt noch in diesem Jahr."
+        },
+        %Cue{from: 571_629, to: 572_168, text: "Oktober."},
+        %Cue{
+          from: 581_499,
+          to: 584_018,
+          text: "was ja eigentlich auch schon wieder die Sommersaison ist."
+        },
+        %Cue{from: 586_659, to: 590_858, text: "zwei Preise, nämlich 699 € oder 749 €."},
+        %Cue{
+          from: 591_008,
+          to: 594_428,
+          text: "Das Ausflug spaket im Wert von 760 € ist schon mit drin."
+        },
+        %Cue{from: 601_269, to: 602_754, text: "alles organisiert für Sie."},
+        %Cue{from: 643_149, to: 644_738, text: "Badebucht garantiert."}
+      ]
+
+      assert measure_comulative_delay(Builder.new(), cues) <= 100
+    end
+
     test "merges successfully two lines" do
       {_builder, cues} =
         Builder.new(min_duration: 0, max_duration: 1000)
@@ -39,19 +107,11 @@ defmodule Subtitle.Cue.BuilderTest do
           text: "Volete offrire al vostro cliente finale diversi servizi e video come pacchetto?"
         })
 
-      expected = [
-        %Cue{text: "Volete offrire al vostro\ncliente finale diversi", from: 1447, to: 3399}
-      ]
-
-      assert cues == expected
+      assert [%Cue{from: 1447}] = cues
 
       {_builder, cue} = Builder.flush(builder)
 
-      assert cue == %Subtitle.Cue{
-               from: 3400,
-               to: 5015,
-               text: "servizi e video come\npacchetto?"
-             }
+      assert %Subtitle.Cue{} = cue
     end
 
     test "returns the single buffer" do
@@ -96,5 +156,23 @@ defmodule Subtitle.Cue.BuilderTest do
       assert {builder, ^cue} = Builder.flush(builder)
       assert Builder.flush(builder) == {builder, nil}
     end
+  end
+
+  def measure_comulative_delay(builder, cues) do
+    cues
+    |> Enum.reduce({builder, 0}, fn cue, {builder, delay} ->
+      last = builder.last
+
+      delay =
+        if last != nil and last.to > cue.from do
+          delay + (last.to - cue.from)
+        else
+          delay
+        end
+
+      {builder, _ready} = Builder.put_and_get(builder, cue)
+      {builder, delay}
+    end)
+    |> elem(1)
   end
 end

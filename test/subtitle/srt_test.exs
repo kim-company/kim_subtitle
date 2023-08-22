@@ -1,5 +1,5 @@
 defmodule Subtitle.SRTTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   alias Subtitle.SRT
   alias Subtitle.Helpers
 

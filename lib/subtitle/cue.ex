@@ -1,7 +1,7 @@
 defmodule Subtitle.Cue do
   defstruct [:from, :to, :text, id: ""]
 
-  @max_distance_ms 10
+  @max_distance_ms 250
 
   @type t :: %__MODULE__{
           text: String.t(),
@@ -42,16 +42,17 @@ defmodule Subtitle.Cue do
     opts = Keyword.validate!(opts, silence: 1)
     silence = Keyword.fetch!(opts, :silence)
 
-    reducer =
-      fn next, [] ->
-          {[], [next]}
-        next, acc = [prev | _] ->
-          if next.from - prev.to > silence do
-            {[acc], [next]}
-          else
-            {[], [next | acc]}
-          end
+    reducer = fn
+      next, [] ->
+        {[], [next]}
+
+      next, acc = [prev | _] ->
+        if next.from - prev.to > silence do
+          {[acc], [next]}
+        else
+          {[], [next | acc]}
         end
+    end
 
     cues
     |> Stream.transform(fn -> [] end, reducer, fn acc -> {[acc], []} end, fn _ -> :ok end)
@@ -269,8 +270,7 @@ defmodule Subtitle.Cue do
   # A sentence is pretty if it has at least `min_length` chars,
   # or has at least two chars and ends with a special character listed above.
   defp pretty?(sentence, min_length) do
-    String.length(sentence) >= min_length ||
-      String.match?(sentence, ~r/\w{2,}[.,;:!?]$/)
+    String.length(sentence) >= min_length and String.match?(sentence, ~r/\w{2,}[.,;:!?]$/)
   end
 
   defp join_words(words, min_length, max_length) do
