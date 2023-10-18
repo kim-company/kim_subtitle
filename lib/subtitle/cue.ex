@@ -1,10 +1,10 @@
 defmodule Subtitle.Cue do
-  defstruct [:from, :to, :text, id: ""]
+  defstruct [:from, :to, :payload, id: ""]
 
   @max_distance_ms 250
 
   @type t :: %__MODULE__{
-          text: String.t(),
+          payload: String.t(),
           id: String.t(),
           from: non_neg_integer(),
           to: pos_integer()
@@ -56,7 +56,7 @@ defmodule Subtitle.Cue do
 
     cues
     |> Stream.transform(fn -> [] end, reducer, fn acc -> {[acc], []} end, fn _ -> :ok end)
-    |> Stream.map(&Enum.map(&1, fn cue -> cue.text end))
+    |> Stream.map(&Enum.map(&1, fn cue -> cue.payload end))
     |> Stream.map(fn acc ->
       acc
       |> Enum.reverse()
@@ -77,8 +77,8 @@ defmodule Subtitle.Cue do
   @spec merge(t(), t(), [merge_option()]) :: {:ok, t()} | {:error, atom()}
   def merge(cue1, cue2, opts \\ []) do
     opts = Keyword.validate!(opts, max_lines: 2, max_duration: 8000)
-    cue1_lines = String.split(cue1.text, "\n")
-    cue2_lines = String.split(cue2.text, "\n")
+    cue1_lines = String.split(cue1.payload, "\n")
+    cue2_lines = String.split(cue2.payload, "\n")
 
     cond do
       length(cue1_lines) + length(cue2_lines) > opts[:max_lines] ->
@@ -92,7 +92,7 @@ defmodule Subtitle.Cue do
 
       true ->
         cue = %__MODULE__{
-          text: Enum.join(cue1_lines ++ cue2_lines, "\n"),
+          payload: Enum.join(cue1_lines ++ cue2_lines, "\n"),
           from: cue1.from,
           to: cue2.to
         }
@@ -109,17 +109,17 @@ defmodule Subtitle.Cue do
   @spec split(t(), [split_option()]) :: [t()]
   def split(cue, opts \\ []) do
     opts = Keyword.validate!(opts, min_length: 10, max_length: 37)
-    cue = Map.update!(cue, :text, &String.trim/1)
+    cue = Map.update!(cue, :payload, &String.trim/1)
 
     cond do
-      cue.text == "" ->
+      cue.payload == "" ->
         []
 
-      String.length(cue.text) <= opts[:max_length] ->
+      String.length(cue.payload) <= opts[:max_length] ->
         [cue]
 
       true ->
-        cue.text
+        cue.payload
         |> split_words()
         |> wrap_words(opts[:max_length])
         |> join_words(opts[:min_length], opts[:max_length])
@@ -193,7 +193,7 @@ defmodule Subtitle.Cue do
       s_to = round(s_from + weight_duration * weight)
 
       {%__MODULE__{
-         text: line,
+         payload: line,
          from: s_from,
          to: if(s_to == to, do: s_to, else: s_to - 1)
        }, s_to}
@@ -225,7 +225,7 @@ defmodule Subtitle.Cue do
 
   def tidy(cues) do
     cues
-    |> Enum.chunk_by(fn %__MODULE__{text: text} -> text end)
+    |> Enum.chunk_by(fn %__MODULE__{payload: payload} -> payload end)
     |> Enum.map(fn
       [cue] ->
         cue
@@ -237,9 +237,9 @@ defmodule Subtitle.Cue do
           |> Enum.filter(fn id -> id != "" and id != nil end)
           |> Enum.join("-")
 
-        %__MODULE__{from: from, text: text} = List.first(chunk)
+        %__MODULE__{from: from, payload: payload} = List.first(chunk)
         %__MODULE__{to: to} = List.last(chunk)
-        %__MODULE__{id: id, from: from, to: to, text: text}
+        %__MODULE__{id: id, from: from, to: to, payload: payload}
     end)
   end
 

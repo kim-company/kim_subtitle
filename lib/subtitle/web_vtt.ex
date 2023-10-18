@@ -58,9 +58,9 @@ defmodule Subtitle.WebVTT do
     |> Enum.map(fn cue = %Cue{from: from, to: to} ->
       %Cue{cue | from: from - offset, to: to - offset}
     end)
-    |> Enum.map(fn %Cue{id: id, from: from, to: to, text: text} ->
+    |> Enum.map(fn %Cue{id: id, from: from, to: to, payload: payload} ->
       id = if id != "" and id != nil, do: [id, "\n"], else: []
-      [id, Timing.from_ms(from), " --> ", Timing.from_ms(to), "\n", text, "\n\n"]
+      [id, Timing.from_ms(from), " --> ", Timing.from_ms(to), "\n", payload, "\n\n"]
     end)
   end
 
@@ -126,7 +126,7 @@ defmodule Subtitle.WebVTT do
            id: id,
            from: from + offset,
            to: to + offset,
-           text: String.trim(rest)
+           payload: String.trim(rest)
          }}
 
       {:error, reason} ->

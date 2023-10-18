@@ -22,64 +22,64 @@ defmodule Subtitle.Cue.BuilderTest do
         %Cue{
           from: 490_538,
           to: 496_837,
-          text:
+          payload:
             "Und das Schöne ist, dass es eine Standortrundreise ist, also Busrundreise könnte man ja auch denken."
         },
-        %Cue{from: 499_659, to: 500_888, text: "immer ein und auspacken."},
-        %Cue{from: 510_098, to: 511_882, text: "um 86 % weiter."},
-        %Cue{from: 511_899, to: 514_176, text: "Empfehlungsrate über 5000 Bewertungen."},
-        %Cue{from: 514_659, to: 515_828, text: "den deutschsprachigen Urlaubern."},
-        %Cue{from: 515_828, to: 517_658, text: "Ein sehr beliebtes Hotel."},
-        %Cue{from: 517_988, to: 520_088, text: "Und da sehen wir es auch."},
+        %Cue{from: 499_659, to: 500_888, payload: "immer ein und auspacken."},
+        %Cue{from: 510_098, to: 511_882, payload: "um 86 % weiter."},
+        %Cue{from: 511_899, to: 514_176, payload: "Empfehlungsrate über 5000 Bewertungen."},
+        %Cue{from: 514_659, to: 515_828, payload: "den deutschsprachigen Urlaubern."},
+        %Cue{from: 515_828, to: 517_658, payload: "Ein sehr beliebtes Hotel."},
+        %Cue{from: 517_988, to: 520_088, payload: "Und da sehen wir es auch."},
         %Cue{
           from: 524_439,
           to: 531_698,
-          text:
+          payload:
             "Und das bedeutet in dem Fall, dass Sie noch zwei Getränke pro Person und Abendessen inklusive haben."
         },
         %Cue{
           from: 532_749,
           to: 535_568,
-          text: "wir sie dann immer ab mit der deutschsprachigen Reiseleitung."
+          payload: "wir sie dann immer ab mit der deutschsprachigen Reiseleitung."
         },
         %Cue{
           from: 535_568,
           to: 541_448,
-          text:
+          payload:
             "Und dann erleben sie tatsächlich dieses Mallorca für alle Sinne, können sich zwischendurch Massagen gönnen."
         },
         %Cue{
           from: 552_189,
           to: 556_748,
-          text: "Reisezeit, wenn es darum geht, auch so eine Standortrundreise zu machen."
+          payload: "Reisezeit, wenn es darum geht, auch so eine Standortrundreise zu machen."
         },
-        %Cue{from: 562_209, to: 562_718, text: "Monaten."},
+        %Cue{from: 562_209, to: 562_718, payload: "Monaten."},
         %Cue{
           from: 562_988,
           to: 566_799,
-          text:
+          payload:
             "Da macht es natürlich auch keinen Spaß, weil es viel zu heiß ist und viel zu warm ist."
         },
         %Cue{
           from: 567_068,
           to: 571_508,
-          text:
+          payload:
             "Aber da haben wir Ihnen die perfekte Reisezeit rausgesucht, nämlich jetzt noch in diesem Jahr."
         },
-        %Cue{from: 571_629, to: 572_168, text: "Oktober."},
+        %Cue{from: 571_629, to: 572_168, payload: "Oktober."},
         %Cue{
           from: 581_499,
           to: 584_018,
-          text: "was ja eigentlich auch schon wieder die Sommersaison ist."
+          payload: "was ja eigentlich auch schon wieder die Sommersaison ist."
         },
-        %Cue{from: 586_659, to: 590_858, text: "zwei Preise, nämlich 699 € oder 749 €."},
+        %Cue{from: 586_659, to: 590_858, payload: "zwei Preise, nämlich 699 € oder 749 €."},
         %Cue{
           from: 591_008,
           to: 594_428,
-          text: "Das Ausflug spaket im Wert von 760 € ist schon mit drin."
+          payload: "Das Ausflug spaket im Wert von 760 € ist schon mit drin."
         },
-        %Cue{from: 601_269, to: 602_754, text: "alles organisiert für Sie."},
-        %Cue{from: 643_149, to: 644_738, text: "Badebucht garantiert."}
+        %Cue{from: 601_269, to: 602_754, payload: "alles organisiert für Sie."},
+        %Cue{from: 643_149, to: 644_738, payload: "Badebucht garantiert."}
       ]
 
       assert measure_comulative_delay(Builder.new(), cues) <= 100
@@ -89,12 +89,12 @@ defmodule Subtitle.Cue.BuilderTest do
       {_builder, cues} =
         Builder.new(min_duration: 0, max_duration: 1000)
         |> Builder.put_and_get([
-          %Cue{text: "Hallo wie geht es dir?", from: 0, to: 400},
-          %Cue{text: "Hallo", from: 401, to: 900},
-          %Cue{text: "I am incomplete", from: 901, to: 1000}
+          %Cue{payload: "Hallo wie geht es dir?", from: 0, to: 400},
+          %Cue{payload: "Hallo", from: 401, to: 900},
+          %Cue{payload: "I am incomplete", from: 901, to: 1000}
         ])
 
-      expected = [%Cue{text: "Hallo wie geht es dir?\nHallo", from: 0, to: 900}]
+      expected = [%Cue{payload: "Hallo wie geht es dir?\nHallo", from: 0, to: 900}]
       assert cues == expected
     end
 
@@ -104,7 +104,7 @@ defmodule Subtitle.Cue.BuilderTest do
         |> Builder.put_and_get(%Subtitle.Cue{
           from: 1447,
           to: 5015,
-          text: "Volete offrire al vostro cliente finale diversi servizi e video come pacchetto?"
+          payload: "Volete offrire al vostro cliente finale diversi servizi e video come pacchetto?"
         })
 
       assert [%Cue{from: 1447}] = cues
@@ -118,11 +118,11 @@ defmodule Subtitle.Cue.BuilderTest do
       {_builder, cues} =
         Builder.new(min_duration: 0, max_duration: 1000)
         |> Builder.put_and_get([
-          %Cue{text: "Hallo wie geht es dir?", from: 0, to: 400},
-          %Cue{text: "I am incomplete", from: 1000, to: 5000}
+          %Cue{payload: "Hallo wie geht es dir?", from: 0, to: 400},
+          %Cue{payload: "I am incomplete", from: 1000, to: 5000}
         ])
 
-      expected = [%Cue{text: "Hallo wie geht es dir?", from: 0, to: 400}]
+      expected = [%Cue{payload: "Hallo wie geht es dir?", from: 0, to: 400}]
       assert cues == expected
     end
 
@@ -131,8 +131,8 @@ defmodule Subtitle.Cue.BuilderTest do
 
       {builder, cues} =
         Builder.put_and_get(builder, [
-          %Cue{text: "Line1\nLine2", from: 0, to: 500},
-          %Cue{text: "Line1\nLine2", from: 501, to: 1000}
+          %Cue{payload: "Line1\nLine2", from: 0, to: 500},
+          %Cue{payload: "Line1\nLine2", from: 501, to: 1000}
         ])
 
       assert [%Cue{from: 0, to: 1000}] = cues
@@ -149,7 +149,7 @@ defmodule Subtitle.Cue.BuilderTest do
     end
 
     test "when there is a pending cue" do
-      cue = %Cue{text: "Hello", from: 0, to: 2000}
+      cue = %Cue{payload: "Hello", from: 0, to: 2000}
       builder = Builder.new()
       {builder, []} = Builder.put_and_get(builder, cue)
 
