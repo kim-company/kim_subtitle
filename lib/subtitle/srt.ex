@@ -32,7 +32,7 @@ defmodule Subtitle.SRT do
               [cue | acc]
 
             {:error, reason} ->
-              Logger.warn("Parse SRT block: #{inspect(reason)}")
+              Logger.warning("Parse SRT block: #{inspect(reason)}")
               acc
           end
 

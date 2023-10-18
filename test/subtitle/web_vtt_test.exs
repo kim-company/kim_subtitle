@@ -220,4 +220,37 @@ defmodule Subtitle.WebVTTTest do
       assert input == input |> WebVTT.unmarshal!() |> WebVTT.marshal!()
     end
   end
+
+  describe "unmarshal_text!/1" do
+    # https://developer.mozilla.org/en-US/docs/Web/API/WebVTT_API#vttcue
+
+    test "w/o tags" do
+      assert [{:text, "text"}] = WebVTT.unmarshal_text!("text")
+    end
+
+    test "w/ class tag" do
+      assert [{:class, "classname", "text"}] = WebVTT.unmarshal_text!("<c.classname>text</c>")
+    end
+
+    test "w/ italics tag" do
+      assert [{:italics, "text"}] = WebVTT.unmarshal_text!("<i>text</i>")
+    end
+
+    test "w/ bold tag" do
+      assert [{:bold, "text"}] = WebVTT.unmarshal_text!("<b>text</b>")
+    end
+
+    test "w/ underline tag" do
+      assert [{:underline, "text"}] = WebVTT.unmarshal_text!("<u>text</u>")
+    end
+
+    @tag skip: true
+    test "w/ ruby/text tag" do
+      assert [{:ruby, [{:rt, "WWW", "World Wide Web"}, {:rt, "oui", "yes"}]}] = WebVTT.unmarshal_text!("<ruby>WWW<rt>World Wide Web</rt>oui<rt>yes</rt></ruby>")
+    end
+
+    test "w/ voice tag" do
+      assert [{:voice, "Bob", "text"}] = WebVTT.unmarshal_text!("<v Bob>text</v>")
+    end
+  end
 end
