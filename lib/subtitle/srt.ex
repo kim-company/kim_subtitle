@@ -20,7 +20,7 @@ defmodule Subtitle.SRT do
         cues =
           acc
           # This parser allows empty cues, which are useless.
-          |> Enum.filter(fn %Cue{payload: x} -> x != "" end)
+          |> Enum.filter(fn %Cue{text: x} -> x != "" end)
           |> Enum.reverse()
 
         {:ok, cues}
@@ -32,7 +32,7 @@ defmodule Subtitle.SRT do
               [cue | acc]
 
             {:error, reason} ->
-              Logger.warning("Parse SRT block: #{inspect(reason)}")
+              Logger.warn("Parse SRT block: #{inspect(reason)}")
               acc
           end
 
@@ -42,7 +42,7 @@ defmodule Subtitle.SRT do
   end
 
   defp parse_block(candidate_cue) do
-    # Happens when a cue with no payload is processed before.
+    # Happens when a cue with no text is processed before.
     candidate_cue = String.trim_leading(candidate_cue)
 
     with {:ok, id, rest} <- parse_cue_id(candidate_cue),
@@ -52,7 +52,7 @@ defmodule Subtitle.SRT do
          id: id,
          from: from,
          to: to,
-         payload: String.trim(rest)
+         text: String.trim(rest)
        }}
     else
       {:error, reason} ->

@@ -27,7 +27,7 @@ defmodule Subtitle.SRTTest do
                  id: "1",
                  from: Helpers.to_ms(5, 0, 400),
                  to: Helpers.to_ms(5, 15, 300),
-                 payload: ~s/This is an example of\na subtitle./
+                 text: ~s/This is an example of\na subtitle./
                }
              ] == srt.cues
     end
@@ -52,13 +52,13 @@ defmodule Subtitle.SRTTest do
                  id: "1",
                  from: Helpers.to_ms(5, 0, 400),
                  to: Helpers.to_ms(5, 15, 300),
-                 payload: ~s/This is an example of\na subtitle./
+                 text: ~s/This is an example of\na subtitle./
                },
                %Subtitle.Cue{
                  id: "2",
                  from: Helpers.to_ms(5, 16, 400),
                  to: Helpers.to_ms(5, 25, 300),
-                 payload: ~s/This is an example of\na subtitle - 2nd subtitle./
+                 text: ~s/This is an example of\na subtitle - 2nd subtitle./
                }
              ] == srt.cues
     end
@@ -89,13 +89,13 @@ defmodule Subtitle.SRTTest do
                  id: "01",
                  from: Helpers.to_ms(0, 1, 621),
                  to: Helpers.to_ms(0, 2, 621),
-                 payload: ~s/- Never drink liquid nitrogen./
+                 text: ~s/- Never drink liquid nitrogen./
                },
                %Subtitle.Cue{
                  id: "03",
                  from: Helpers.to_ms(0, 3, 121),
                  to: Helpers.to_ms(0, 3, 121),
-                 payload: ~s/- It will perforate your stomach\n- You could die./
+                 text: ~s/- It will perforate your stomach\n- You could die./
                }
              ] == srt.cues
     end
@@ -111,7 +111,7 @@ defmodule Subtitle.SRTTest do
                  id: "01",
                  from: Helpers.to_ms(0, 1, 621),
                  to: Helpers.to_ms(0, 2, 621),
-                 payload: ~s/LSBOZXZlciBkcmluayBsaXF1aWQgbml/
+                 text: ~s/LSBOZXZlciBkcmluayBsaXF1aWQgbml/
                }
              ] == srt.cues
     end

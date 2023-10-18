@@ -67,19 +67,19 @@ defmodule Subtitle.WebVTTTest do
                  id: "14",
                  from: Helpers.to_ms(1, 14, 815),
                  to: Helpers.to_ms(1, 18, 114),
-                 payload: ~s/- What?\n- Where are we now?/
+                 text: ~s/- What?\n- Where are we now?/
                },
                %Subtitle.Cue{
                  id: "15",
                  from: Helpers.to_ms(1, 18, 171),
                  to: Helpers.to_ms(1, 20, 991),
-                 payload: ~s/- This is big bat country./
+                 text: ~s/- This is big bat country./
                },
                %Subtitle.Cue{
                  id: "16",
                  from: Helpers.to_ms(1, 21, 58),
                  to: Helpers.to_ms(1, 23, 868),
-                 payload:
+                 text:
                    ~s/- [ Bats Screeching ]\n- They won't get in your hair. They're after the bugs./
                }
              ] == webvtt.cues
@@ -104,13 +104,13 @@ defmodule Subtitle.WebVTTTest do
                  id: "",
                  from: Helpers.to_ms(4, 2, 500),
                  to: Helpers.to_ms(4, 5, 0),
-                 payload: ~s/J'ai commencé le basket à l'âge de 13, 14 ans/
+                 text: ~s/J'ai commencé le basket à l'âge de 13, 14 ans/
                },
                %Subtitle.Cue{
                  id: "",
                  from: Helpers.to_ms(4, 5, 1),
                  to: Helpers.to_ms(4, 7, 800),
-                 payload:
+                 text:
                    ~s|Sur les <i.foreignphrase><lang en>playground</lang></i>, ici à Montpellier|
                }
              ] == webvtt.cues
@@ -137,7 +137,7 @@ defmodule Subtitle.WebVTTTest do
                  id: "",
                  from: Helpers.to_ms(44, 13, 215) + offset,
                  to: Helpers.to_ms(44, 17, 881) + offset,
-                 payload: ~s/Deshalb sollte sollten die Empfehlung\nbis Ende März vorgelegt werden./
+                 text: ~s/Deshalb sollte sollten die Empfehlung\nbis Ende März vorgelegt werden./
                }
              ] == webvtt.cues
 
@@ -150,28 +150,6 @@ defmodule Subtitle.WebVTTTest do
                  data: %{offset: offset}
                }
              ] == webvtt.header
-    end
-
-    @tag skip: true
-    test "with speaker tags" do
-      input = """
-      WEBVTT
-
-      00:11.000 --> 00:13.000
-      <v Roger Bingham>We are in New York City
-
-      00:30.500 --> 00:32.500
-      <v Neil deGrasse Tyson>Didn't we talk about enough in that conversation?
-      """
-      assert {:ok, webvtt} = WebVTT.unmarshal(input)
-
-      assert [
-        "We are in New York City",
-        "Didn't we talk about enough in that conversation?"
-      ]
-
-      IO.inspect(webvtt)
-      assert false
     end
 
     test "regression#1" do
