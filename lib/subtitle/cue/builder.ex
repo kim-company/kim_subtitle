@@ -1,4 +1,11 @@
 defmodule Subtitle.Cue.Builder do
+  @moduledoc """
+  Builder allows to format and align cues. Pass in unformatted, long sentenced cues
+  and get back a stream of cues formatted with the provided defaults.
+
+  Supports Cue payloads with WebVTT tags.
+  """
+
   alias Subtitle.Cue
 
   defstruct [:pending, :last, :min_length, :max_length, :max_lines, :min_duration, :max_duration]
@@ -41,8 +48,9 @@ defmodule Subtitle.Cue.Builder do
   end
 
   @doc "Adds a new cue and maybe returns built cues."
-  @spec put_and_get(t(), Cue.t() | [Cue.t()]) :: {t(), [Cue.t()]}
-  def put_and_get(builder, cue_or_cues) do
+  @spec put_and_get(t(), Cue.t() | [Cue.t()], Keyword.t()) :: {t(), [Cue.t()]}
+  def put_and_get(builder, cue_or_cues, opts \\ []) do
+    flush = Keyword.get(opts, :flush, false)
     split_opts = [min_length: builder.min_length, max_length: builder.max_length]
 
     cues =
@@ -53,7 +61,15 @@ defmodule Subtitle.Cue.Builder do
     cues = if builder.pending, do: [builder.pending | cues], else: cues
 
     merge_opts = [max_lines: builder.max_lines, max_duration: builder.max_duration]
-    [pending | done] = merge_cues(cues, merge_opts)
+    cues = merge_cues(cues, merge_opts)
+
+    {pending, done} =
+      unless flush do
+        [pending | done] = cues
+        {pending, done}
+      else
+        {nil, cues}
+      end
 
     cues = Enum.reverse(done)
     cues = finalize_cues(builder, cues)

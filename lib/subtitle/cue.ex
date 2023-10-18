@@ -1,4 +1,9 @@
 defmodule Subtitle.Cue do
+  @moduledoc """
+  Cue manipulation. It is aware of WebVTT tags in the text field.
+  """
+  alias Subtitle.WebVTT.Payload
+
   defstruct [:from, :to, :text, id: ""]
 
   @max_distance_ms 250
@@ -77,8 +82,8 @@ defmodule Subtitle.Cue do
   @spec merge(t(), t(), [merge_option()]) :: {:ok, t()} | {:error, atom()}
   def merge(cue1, cue2, opts \\ []) do
     opts = Keyword.validate!(opts, max_lines: 2, max_duration: 8000)
-    cue1_lines = String.split(cue1.text, "\n")
-    cue2_lines = String.split(cue2.text, "\n")
+    cue1_lines = cue1.text |> Payload.unmarshal!() |> Payload.text() |> String.split("\n")
+    cue2_lines = cue2.text |> Payload.unmarshal!() |> Payload.text() |> String.split("\n")
 
     cond do
       length(cue1_lines) + length(cue2_lines) > opts[:max_lines] ->
@@ -92,7 +97,7 @@ defmodule Subtitle.Cue do
 
       true ->
         cue = %__MODULE__{
-          text: Enum.join(cue1_lines ++ cue2_lines, "\n"),
+          text: cue1.text <> "\n" <> cue2.text,
           from: cue1.from,
           to: cue2.to
         }
@@ -111,15 +116,17 @@ defmodule Subtitle.Cue do
     opts = Keyword.validate!(opts, min_length: 10, max_length: 37)
     cue = Map.update!(cue, :text, &String.trim/1)
 
+    tags = Payload.unmarshal!(cue.text)
+
     cond do
-      cue.text == "" ->
+      tags == [] ->
         []
 
-      String.length(cue.text) <= opts[:max_length] ->
+      Payload.text_size(tags) <= opts[:max_length] ->
         [cue]
 
       true ->
-        cue.text
+        tags
         |> split_words()
         |> wrap_words(opts[:max_length])
         |> join_words(opts[:min_length], opts[:max_length])
@@ -166,10 +173,12 @@ defmodule Subtitle.Cue do
     end
   end
 
-  @doc "Adds the timings to all the lines by calculating them."
-  def add_timings(lines, from, to) do
+  defp add_timings(tags_batch, from, to) do
     lines_with_weights =
-      Enum.map(lines, fn line ->
+      tags_batch
+      |> Enum.map(fn tags ->
+        line = Payload.text(tags)
+
         weight =
           line
           |> String.graphemes()
@@ -178,7 +187,7 @@ defmodule Subtitle.Cue do
             _char, sum -> sum + 1
           end)
 
-        {line, weight}
+        {tags, weight}
       end)
 
     total_weight =
@@ -193,7 +202,7 @@ defmodule Subtitle.Cue do
       s_to = round(s_from + weight_duration * weight)
 
       {%__MODULE__{
-         text: line,
+         text: Payload.marshal!(line),
          from: s_from,
          to: if(s_to == to, do: s_to, else: s_to - 1)
        }, s_to}
@@ -243,70 +252,15 @@ defmodule Subtitle.Cue do
     end)
   end
 
-  defp split_words(sentence) do
-    String.split(sentence, " ", trim: true)
+  defp split_words(tags) do
+    Payload.split_words(tags)
   end
 
-  defp wrap_words(words, max_length) do
-    Enum.flat_map(words, &soft_wrap(&1, max_length))
-  end
-
-  defp soft_wrap(word, max_length) do
-    if String.length(word) <= max_length do
-      [word]
-    else
-      case String.split(word, ["-", "–"], trim: true) do
-        [word] -> hard_wrap(word, max_length)
-        words -> Enum.flat_map(words, &soft_wrap("#{&1}-", max_length))
-      end
-    end
-  end
-
-  defp hard_wrap(word, max_length) do
-    {pre, rest} = String.split_at(word, max_length - 1)
-    ["#{pre}-" | soft_wrap(rest, max_length)]
-  end
-
-  # A sentence is pretty if it has at least `min_length` chars,
-  # or has at least two chars and ends with a special character listed above.
-  defp pretty?(sentence, min_length) do
-    String.length(sentence) >= min_length and String.match?(sentence, ~r/\w{2,}[.,;:!?]$/)
+  defp wrap_words(tags, max_length) do
+    Payload.wrap_words(tags, max_length)
   end
 
   defp join_words(words, min_length, max_length) do
-    words
-    |> join_words([], min_length, max_length)
-    |> Enum.reverse()
-  end
-
-  # If we have a last and a prelast element we try to join them
-  # in the case that the last one is to short and the prelast is not pretty.
-  defp join_words([last], [prelast | acc], min_length, _max_length) do
-    if String.length(last) >= min_length or pretty?(prelast, min_length) do
-      [last, prelast | acc]
-    else
-      # NOTE: This could be improved by splitting on a character count basis instead of number of words.
-      words = split_words("#{prelast} #{last}")
-      half = trunc(length(words) / 2)
-
-      words
-      |> Enum.split(half)
-      |> Tuple.to_list()
-      |> Enum.map(&Enum.join(&1, " "))
-      |> Enum.reverse()
-      |> Enum.concat(acc)
-    end
-  end
-
-  defp join_words([last], [], _min_length, _max_length), do: [last]
-
-  defp join_words([first, second | rest], acc, min_length, max_length) do
-    combined = "#{first} #{second}"
-
-    if String.length(combined) > max_length or pretty?(first, min_length) do
-      join_words([second | rest], [first | acc], min_length, max_length)
-    else
-      join_words([combined | rest], acc, min_length, max_length)
-    end
+    Payload.join_words(words, min_length, max_length)
   end
 end

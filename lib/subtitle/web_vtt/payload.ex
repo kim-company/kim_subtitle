@@ -1,6 +1,7 @@
 defmodule Subtitle.WebVTT.Payload do
   @type tag ::
-          {:bold, binary()}
+          {:text, binary()}
+          | {:bold, binary()}
           | {:italics, binary()}
           | {:underline, binary()}
           | {:voice, speaker :: binary(), binary()}
@@ -31,12 +32,140 @@ defmodule Subtitle.WebVTT.Payload do
     |> Enum.join("")
   end
 
-  def marshal_tag({:text, text}), do: text
-  def marshal_tag({:class, classname, text}), do: "<c." <> classname <> ">" <> text <> "</c>"
-  def marshal_tag({:voice, speaker, text}), do: "<v " <> speaker <> ">" <> text <> "</v>"
-  def marshal_tag({:bold, text}), do: "<b>" <> text <> "</b>"
-  def marshal_tag({:italics, text}), do: "<i>" <> text <> "</i>"
-  def marshal_tag({:underline, text}), do: "<u>" <> text <> "</u>"
+  @doc "Returns the size of the text components of each tag"
+  @spec text_size([tag()] | tag()) :: pos_integer()
+  def text_size(tags) when is_list(tags) do
+    tags
+    |> text()
+    |> String.length()
+  end
+
+  def text_size({_, text}), do: String.length(text)
+  def text_size({_, _, text}), do: String.length(text)
+
+  @doc "Extract text embedded in the tags"
+  @spec text([tag()]) :: String.t()
+  def text(tags) do
+    tags
+    |> Enum.reduce([], fn
+      {_tag, text}, acc -> [text | acc]
+      {_tag, _, text}, acc -> [text | acc]
+    end)
+    |> Enum.reverse()
+    |> Enum.join(" ")
+  end
+
+  @doc "Splits each word in the text of the tags into a single tagged words"
+  @spec split_words([tag()]) :: [tag()]
+  def split_words(tags) do
+    Enum.flat_map(tags, fn
+      {tag, text} ->
+        text
+        |> String.split(" ", trim: true)
+        |> Enum.map(fn word -> {tag, word} end)
+
+      {tag, info, text} ->
+        text
+        |> String.split(" ", trim: true)
+        |> Enum.map(fn word -> {tag, info, word} end)
+    end)
+  end
+
+  @doc "Splits words when they are longer then the specified length"
+  @spec wrap_words([tag()], pos_integer()) :: [tag()]
+  def wrap_words(tags, _max_length) do
+    # TODO
+    # implement this one.
+    # Enum.flat_map(words, &soft_wrap(&1, max_length))
+    tags
+  end
+
+  # defp soft_wrap(word, max_length) do
+  #   if String.length(word) <= max_length do
+  #     [word]
+  #   else
+  #     case String.split(word, ["-", "–"], trim: true) do
+  #       [word] -> hard_wrap(word, max_length)
+  #       words -> Enum.flat_map(words, &soft_wrap("#{&1}-", max_length))
+  #     end
+  #   end
+  # end
+
+  # defp hard_wrap(word, max_length) do
+  #   {pre, rest} = String.split_at(word, max_length - 1)
+  #   ["#{pre}-" | soft_wrap(rest, max_length)]
+  # end
+
+  # A sentence is pretty if it has at least `min_length` chars,
+  # or has at least two chars and ends with a special character listed above.
+  @spec pretty?([tag()] | tag(), pos_integer()) :: boolean()
+  def pretty?(tags, min_length) when is_list(tags) do
+    text_size(tags) >= min_length and String.match?(text(tags), ~r/\w{2,}[.,;:!?]$/)
+  end
+
+  def pretty?(tag, min_length) do
+    text =
+      case tag do
+        {_, text} -> text
+        {_, _, text} -> text
+      end
+
+    String.length(text) >= min_length and String.match?(text, ~r/\w{2,}[.,;:!?]$/)
+  end
+
+  @spec join_words([tag()], pos_integer(), pos_integer()) :: [[tag()]]
+  def join_words(tags, min_length, max_length) do
+    tags
+    |> join_words([], [], min_length, max_length)
+    |> Enum.reverse()
+  end
+
+  # If we have a last and a prelast element we try to join them
+  # in the case that the last one is to short and the prelast is not pretty.
+  defp join_words([last], [prelast | acc], ready, min_length, _max_length) do
+    if text_size(last) >= min_length or pretty?(prelast, min_length) do
+      ([last, prelast | acc] ++ [ready])
+      |> Enum.map(&Enum.reverse/1)
+    else
+      # In this case, we split the last buffer in half,
+      # appending this tag to the second half.
+
+      # NOTE
+      # This could be improved by splitting on a character count basis instead of number of words.
+
+      tags = split_words([last, prelast | acc])
+      half = trunc(length(tags) / 2)
+
+      last_two =
+        tags
+        |> Enum.split(half)
+        |> Tuple.to_list()
+
+      (last_two ++ ready)
+      |> Enum.map(&Enum.reverse/1)
+    end
+  end
+
+  defp join_words([last], [], [], _min_length, _max_length), do: [[last]]
+
+  defp join_words([head | rest], buf, ready, min_length, max_length) do
+    combined = [head | buf]
+
+    if text_size(combined) > max_length or pretty?(head, min_length) do
+      # In this case, we don't want to merge the two.
+      join_words([head | rest], [], [buf | ready], min_length, max_length)
+    else
+      # Merge with buffer and go on!
+      join_words(rest, [head | buf], ready, min_length, max_length)
+    end
+  end
+
+  defp marshal_tag({:text, text}), do: text
+  defp marshal_tag({:class, classname, text}), do: "<c." <> classname <> ">" <> text <> "</c>"
+  defp marshal_tag({:voice, speaker, text}), do: "<v " <> speaker <> ">" <> text <> "</v>"
+  defp marshal_tag({:bold, text}), do: "<b>" <> text <> "</b>"
+  defp marshal_tag({:italics, text}), do: "<i>" <> text <> "</i>"
+  defp marshal_tag({:underline, text}), do: "<u>" <> text <> "</u>"
 
   defp tokenize([], acc) do
     Enum.reverse(acc)

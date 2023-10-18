@@ -17,6 +17,46 @@ defmodule Subtitle.Cue.BuilderTest do
   end
 
   describe "put_and_get/2" do
+    test "with voice tags" do
+      cues = [
+        %Cue{
+          from: 0,
+          to: 9_000,
+          text:
+            "<v Roger Bingham>We're actually at the Lucern Hotel, just down the street from the American Museum of Natural History And with me is Neil deGrasse Tyson Astrophysicist, Director of the Hayden Planetarium at the AMNH."
+        }
+      ]
+
+      builder = Builder.new()
+      {_builder, cues} = Builder.put_and_get(builder, cues, flush: true)
+
+      expected = [
+        %Cue{
+          from: 0,
+          to: 2971,
+          text:
+            "<v Roger Bingham>We're actually at the Lucern Hotel,\njust down the street from the</v>",
+          id: ""
+        },
+        %Cue{
+          from: 2972,
+          to: 5779,
+          text:
+            "<v Roger Bingham>American Museum of Natural History\nAnd with me is Neil deGrasse Tyson</v>",
+          id: ""
+        },
+        %Cue{
+          from: 5780,
+          to: 9000,
+          text:
+            "<v Roger Bingham>Astrophysicist, Director of the\nHayden Planetarium at the AMNH.</v>",
+          id: ""
+        }
+      ]
+
+      assert cues == expected
+    end
+
     test "does not create excessive delay" do
       cues = [
         %Cue{

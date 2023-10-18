@@ -34,6 +34,10 @@ defmodule Subtitle.WebVTT.PayloadTest do
     test "w/ voice tag" do
       assert [{:voice, "Bob", "text"}] = Payload.unmarshal!("<v Bob>text</v>")
     end
+
+    test "w/ tag, unclosed" do
+      assert [{:voice, "Bob", "text"}] = Payload.unmarshal!("<v Bob>text")
+    end
   end
 
   describe "marshal!/1" do
