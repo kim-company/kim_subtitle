@@ -61,7 +61,13 @@ defmodule Subtitle.Cue do
 
     cues
     |> Stream.transform(fn -> [] end, reducer, fn acc -> {[acc], []} end, fn _ -> :ok end)
-    |> Stream.map(&Enum.map(&1, fn cue -> cue.text end))
+    |> Stream.map(
+      &Enum.map(&1, fn cue ->
+        cue.text
+        |> Payload.unmarshal!()
+        |> Payload.string()
+      end)
+    )
     |> Stream.map(fn acc ->
       acc
       |> Enum.reverse()
@@ -71,22 +77,57 @@ defmodule Subtitle.Cue do
     end)
   end
 
+  @doc "Splits a cue into multiple single-line cues."
+  @spec split(t(), [split_option()]) :: [t()]
+  def split(cue, opts \\ []) do
+    opts = Keyword.validate!(opts, min_length: 10, max_length: 37)
+    cue = Map.update!(cue, :text, &String.trim/1)
+
+    tags = Payload.unmarshal!(cue.text)
+    size = Payload.string(tags) |> String.length()
+
+    cond do
+      tags == [] ->
+        []
+
+      size <= opts[:max_length] ->
+        [cue]
+
+      true ->
+        tags
+        |> Payload.fragment(opts[:max_length])
+        |> Payload.merge(opts[:min_length], opts[:max_length])
+        |> add_timings(cue.from, cue.to)
+    end
+  end
+
   @doc """
   Merges two cues given the following conditions:
   * The number of lines do not exceed `opts.max_lines`
   * The distance between the two cues is less than `@max_distance_ms`.
   * The duration of the cues does not exceed `opts.max_duration`
 
-  The cues must be sorted by time and should not overlap.
+  The cues must be sorted by time, should not overlap and should
+  not contain new lines.
   """
   @spec merge(t(), t(), [merge_option()]) :: {:ok, t()} | {:error, atom()}
   def merge(cue1, cue2, opts \\ []) do
     opts = Keyword.validate!(opts, max_lines: 2, max_duration: 8000)
-    cue1_lines = cue1.text |> Payload.unmarshal!() |> Payload.text() |> String.split("\n")
-    cue2_lines = cue2.text |> Payload.unmarshal!() |> Payload.text() |> String.split("\n")
+
+    # FIXME
+    # Here we have to check the number of lines.
+
+    [nlines1, nlines2] =
+      Enum.map([cue1, cue2], fn cue ->
+        cue.text
+        |> Payload.unmarshal!()
+        |> Payload.string()
+        |> String.split("\n")
+        |> Enum.count()
+      end)
 
     cond do
-      length(cue1_lines) + length(cue2_lines) > opts[:max_lines] ->
+      nlines1 + nlines2 > opts[:max_lines] ->
         {:error, :too_many_lines}
 
       cue2.from - cue1.to > @max_distance_ms ->
@@ -97,7 +138,7 @@ defmodule Subtitle.Cue do
 
       true ->
         cue = %__MODULE__{
-          text: cue1.text <> "\n" <> cue2.text,
+          text: "#{cue1.text}\n#{cue2.text}",
           from: cue1.from,
           to: cue2.to
         }
@@ -109,30 +150,6 @@ defmodule Subtitle.Cue do
   @doc "Returns the duration of the cue."
   @spec duration(t()) :: pos_integer()
   def duration(cue), do: cue.to - cue.from
-
-  @doc "Splits a cue into multiple single-line cues."
-  @spec split(t(), [split_option()]) :: [t()]
-  def split(cue, opts \\ []) do
-    opts = Keyword.validate!(opts, min_length: 10, max_length: 37)
-    cue = Map.update!(cue, :text, &String.trim/1)
-
-    tags = Payload.unmarshal!(cue.text)
-
-    cond do
-      tags == [] ->
-        []
-
-      Payload.text_size(tags) <= opts[:max_length] ->
-        [cue]
-
-      true ->
-        tags
-        |> split_words()
-        |> wrap_words(opts[:max_length])
-        |> join_words(opts[:min_length], opts[:max_length])
-        |> add_timings(cue.from, cue.to)
-    end
-  end
 
   @doc """
   Extend cue to last at least `min_duration`.
@@ -174,10 +191,17 @@ defmodule Subtitle.Cue do
   end
 
   defp add_timings(tags_batch, from, to) do
+    # NOTE
+    # Takes a batch of tags that come from the same original cue.
+    # It is required that the whole batch is provided so to
+    # correctly compute the time weigth of each line. Might not
+    # be required with we preserve timing information with the
+    # timing Tag.
+
     lines_with_weights =
       tags_batch
       |> Enum.map(fn tags ->
-        line = Payload.text(tags)
+        line = Payload.string(tags)
 
         weight =
           line
@@ -187,7 +211,7 @@ defmodule Subtitle.Cue do
             _char, sum -> sum + 1
           end)
 
-        {tags, weight}
+        {Payload.marshal!(tags), weight}
       end)
 
     total_weight =
@@ -199,10 +223,11 @@ defmodule Subtitle.Cue do
 
     lines_with_weights
     |> Enum.map_reduce(from, fn {line, weight}, s_from ->
-      s_to = round(s_from + weight_duration * weight)
+      s_to = round(s_from + weight_duration * weight) - 1
+      if s_to > to, do: raise("we're fucked: #{s_to} > #{to}")
 
       {%__MODULE__{
-         text: Payload.marshal!(line),
+         text: line,
          from: s_from,
          to: if(s_to == to, do: s_to, else: s_to - 1)
        }, s_to}
@@ -250,17 +275,5 @@ defmodule Subtitle.Cue do
         %__MODULE__{to: to} = List.last(chunk)
         %__MODULE__{id: id, from: from, to: to, text: text}
     end)
-  end
-
-  defp split_words(tags) do
-    Payload.split_words(tags)
-  end
-
-  defp wrap_words(tags, max_length) do
-    Payload.wrap_words(tags, max_length)
-  end
-
-  defp join_words(words, min_length, max_length) do
-    Payload.join_words(words, min_length, max_length)
   end
 end

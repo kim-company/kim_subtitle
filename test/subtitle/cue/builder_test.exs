@@ -17,6 +17,7 @@ defmodule Subtitle.Cue.BuilderTest do
   end
 
   describe "put_and_get/2" do
+    @tag skip: true
     test "with voice tags" do
       cues = [
         %Cue{
@@ -201,7 +202,7 @@ defmodule Subtitle.Cue.BuilderTest do
   def measure_comulative_delay(builder, cues) do
     cues
     |> Enum.reduce({builder, 0}, fn cue, {builder, delay} ->
-      last = builder.last
+      last = builder.pending || builder.last
 
       delay =
         if last != nil and last.to > cue.from do

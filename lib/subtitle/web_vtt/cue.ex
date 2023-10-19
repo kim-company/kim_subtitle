@@ -1,9 +1,11 @@
 defmodule Subtitle.WebVTT.Cue do
-  def new(from, to, payload) when is_binary(payload) do
-    %Subtitle.Cue{from: from, to: to, text: payload}
-  end
+  alias Subtitle.WebVTT.Payload
 
-  def new(from, to, payload) when is_list(payload) do
-    %Subtitle.Cue{from: from, to: to, text: Subtitle.WebVTT.Payload.marshal!(payload)}
-  end
+  defstruct [:from, :to, :payload, id: ""]
+
+  @type t :: %__MODULE__{
+          from: pos_integer(),
+          to: pos_integer(),
+          payload: Payload.t()
+        }
 end

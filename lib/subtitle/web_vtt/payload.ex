@@ -1,13 +1,7 @@
 defmodule Subtitle.WebVTT.Payload do
-  @type tag ::
-          {:text, binary()}
-          | {:bold, binary()}
-          | {:italics, binary()}
-          | {:underline, binary()}
-          | {:voice, speaker :: binary(), binary()}
-          | {:class, name :: binary(), binary()}
+  alias Subtitle.WebVTT.Payload.Tag
 
-  @spec unmarshal!(binary()) :: [tag()]
+  @spec unmarshal!(binary()) :: [Tag.t()]
   def unmarshal!(text) do
     case unmarshal(text) do
       {:ok, data} -> data
@@ -15,116 +9,149 @@ defmodule Subtitle.WebVTT.Payload do
     end
   end
 
-  @spec unmarshal!(binary()) :: {:ok, [tag()]} | {:error, binary()}
+  @spec unmarshal(binary()) :: {:ok, [Tag.t()]} | {:error, binary()}
   def unmarshal(text) do
     tokens =
       text
       |> String.graphemes()
       |> tokenize([])
 
-    parse_tokens(tokens, nil, [])
+    case parse_tokens(tokens, nil, []) do
+      {:ok, tags} -> {:ok, tags}
+      {:error, reason} -> {:error, reason, text}
+    end
   end
 
-  @spec marshal!([tag()]) :: binary()
+  @spec marshal!([Tag.t()]) :: binary()
   def marshal!(tags) do
     tags
     |> Enum.map(&marshal_tag/1)
     |> Enum.join("")
   end
 
-  @doc "Returns the size of the text components of each tag"
-  @spec text_size([tag()] | tag()) :: pos_integer()
-  def text_size(tags) when is_list(tags) do
-    tags
-    |> text()
-    |> String.length()
-  end
-
-  def text_size({_, text}), do: String.length(text)
-  def text_size({_, _, text}), do: String.length(text)
-
-  @doc "Extract text embedded in the tags"
-  @spec text([tag()]) :: String.t()
-  def text(tags) do
-    tags
-    |> Enum.reduce([], fn
-      {_tag, text}, acc -> [text | acc]
-      {_tag, _, text}, acc -> [text | acc]
-    end)
-    |> Enum.reverse()
-    |> Enum.join(" ")
-  end
-
-  @doc "Splits each word in the text of the tags into a single tagged words"
-  @spec split_words([tag()]) :: [tag()]
-  def split_words(tags) do
-    Enum.flat_map(tags, fn
-      {tag, text} ->
-        text
-        |> String.split(" ", trim: true)
-        |> Enum.map(fn word -> {tag, word} end)
-
-      {tag, info, text} ->
-        text
-        |> String.split(" ", trim: true)
-        |> Enum.map(fn word -> {tag, info, word} end)
-    end)
-  end
-
-  @doc "Splits words when they are longer then the specified length"
-  @spec wrap_words([tag()], pos_integer()) :: [tag()]
-  def wrap_words(tags, _max_length) do
-    # TODO
-    # implement this one.
-    # Enum.flat_map(words, &soft_wrap(&1, max_length))
-    tags
-  end
-
-  # defp soft_wrap(word, max_length) do
-  #   if String.length(word) <= max_length do
-  #     [word]
-  #   else
-  #     case String.split(word, ["-", "–"], trim: true) do
-  #       [word] -> hard_wrap(word, max_length)
-  #       words -> Enum.flat_map(words, &soft_wrap("#{&1}-", max_length))
-  #     end
-  #   end
-  # end
-
-  # defp hard_wrap(word, max_length) do
-  #   {pre, rest} = String.split_at(word, max_length - 1)
-  #   ["#{pre}-" | soft_wrap(rest, max_length)]
-  # end
-
   # A sentence is pretty if it has at least `min_length` chars,
   # or has at least two chars and ends with a special character listed above.
-  @spec pretty?([tag()] | tag(), pos_integer()) :: boolean()
-  def pretty?(tags, min_length) when is_list(tags) do
-    text_size(tags) >= min_length and String.match?(text(tags), ~r/\w{2,}[.,;:!?]$/)
-  end
-
-  def pretty?(tag, min_length) do
-    text =
-      case tag do
-        {_, text} -> text
-        {_, _, text} -> text
-      end
-
+  @spec pretty?(binary(), pos_integer()) :: boolean()
+  def pretty?(text, min_length) do
     String.length(text) >= min_length and String.match?(text, ~r/\w{2,}[.,;:!?]$/)
   end
 
-  @spec join_words([tag()], pos_integer(), pos_integer()) :: [[tag()]]
-  def join_words(tags, min_length, max_length) do
+  def string(tags) do
     tags
-    |> join_words([], [], min_length, max_length)
+    |> List.wrap()
+    |> Enum.map(&to_string/1)
+    |> Enum.join(" ")
+  end
+
+  def size(tags) do
+    tags
+    |> string()
+    |> String.length()
+  end
+
+  @doc """
+  Merges equals tags together. Useful after a fragment call.
+  """
+  @spec simplify([Tag.t()]) :: [Tag.t()]
+  def simplify(tags) do
+    simplify(tags, [])
+  end
+
+  defp simplify([h | t], []), do: simplify(t, [h])
+  defp simplify([], acc), do: Enum.reverse(acc)
+
+  defp simplify([cur | t], [prev | acc]) do
+    if Tag.equals(cur, prev) do
+      simplify(t, [Tag.append_text(prev, cur.text) | acc])
+    else
+      simplify(t, [cur, prev | acc])
+    end
+  end
+
+  @doc """
+  Each tag will be fragmented into a list of single word tags of the same type. If words are longer than max_length, they are wrapped.
+  """
+  @spec fragment(Tag.t() | [Tag.t()], pos_integer()) :: [Tag.t()]
+  def fragment(tag_or_tags, _max_length) do
+    # TODO
+    # Implement wrapping.
+
+    tag_or_tags
+    |> List.wrap()
+    |> Enum.flat_map(fn tag ->
+      tag.text
+      |> String.split(~r/\s/, trim: true)
+      |> Enum.map(fn word -> %Tag{tag | text: word} end)
+    end)
+  end
+
+  # @doc "Splits words when they are longer then the specified length"
+  # @spec wrap_words([tag()], pos_integer()) :: [tag()]
+  # def wrap_words(tags, _max_length) do
+  #   # TODO
+  #   # implement this one.
+  #   # Enum.flat_map(words, &soft_wrap(&1, max_length))
+  #   tags
+  # end
+
+  # # defp soft_wrap(word, max_length) do
+  # #   if String.length(word) <= max_length do
+  # #     [word]
+  # #   else
+  # #     case String.split(word, ["-", "–"], trim: true) do
+  # #       [word] -> hard_wrap(word, max_length)
+  # #       words -> Enum.flat_map(words, &soft_wrap("#{&1}-", max_length))
+  # #     end
+  # #   end
+  # # end
+
+  # # defp hard_wrap(word, max_length) do
+  # #   {pre, rest} = String.split_at(word, max_length - 1)
+  # #   ["#{pre}-" | soft_wrap(rest, max_length)]
+  # # end
+
+  @doc """
+  Merges the tags until their text size falls within `min_length` and `max_length`. Calls simplify/1 on the final result.
+  """
+  @spec merge([Tag.t()], pos_integer(), pos_integer()) :: [[Tag.t()]]
+  def merge(tags, min_length, max_length) do
+    tags
+    |> merge([], [], min_length, max_length)
     |> Enum.reverse()
+    |> Enum.map(&simplify/1)
   end
 
   # If we have a last and a prelast element we try to join them
   # in the case that the last one is to short and the prelast is not pretty.
-  defp join_words([last], [prelast | acc], ready, min_length, _max_length) do
-    if text_size(last) >= min_length or pretty?(prelast, min_length) do
-      ([last, prelast | acc] ++ [ready])
+  # defp merge([cur], buf, ready, min_length, max_length) do
+  #   buf_line =
+  #     buf
+  #     |> Enum.reverse()
+  #     |> string()
+  #     |> IO.inspect(label: "BUF LINE")
+
+  #   IO.inspect(cur, label: "CUR")
+
+  #   if size(cur) >= min_length or pretty?(buf_line, min_length) do
+  #     # We're merging buf with cur.
+  #     IO.inspect("ENTERED")
+
+  #     [cur, buf | ready]
+  #     |> Enum.map(&Enum.reverse/1)
+  #   else
+  #   end
+  # end
+
+  defp merge([cur], [], [], _min_length, _max_length), do: [[cur]]
+
+  defp merge([], [single], ready, min_length, max_length) do
+    last_line =
+      hd(ready)
+      |> Enum.reverse()
+      |> string()
+
+    if size(single) > min_length or pretty?(last_line, min_length) do
+      [[single] | ready]
       |> Enum.map(&Enum.reverse/1)
     else
       # In this case, we split the last buffer in half,
@@ -133,39 +160,48 @@ defmodule Subtitle.WebVTT.Payload do
       # NOTE
       # This could be improved by splitting on a character count basis instead of number of words.
 
-      tags = split_words([last, prelast | acc])
-      half = trunc(length(tags) / 2)
+      tags = fragment([single | hd(ready)], max_length)
+      # We're ceiling because the list is reversed and we prefer
+      # the first (here the last)
+      half = ceil(length(tags) / 2)
 
       last_two =
         tags
         |> Enum.split(half)
         |> Tuple.to_list()
 
-      (last_two ++ ready)
+      (last_two ++ tl(ready))
       |> Enum.map(&Enum.reverse/1)
     end
   end
 
-  defp join_words([last], [], [], _min_length, _max_length), do: [[last]]
+  defp merge([], buf, ready, _min_length, _max_length) do
+    [buf | ready]
+    |> Enum.map(&Enum.reverse/1)
+  end
 
-  defp join_words([head | rest], buf, ready, min_length, max_length) do
-    combined = [head | buf]
+  defp merge([cur | rest], buf, ready, min_length, max_length) do
+    combined = [cur | buf]
 
-    if text_size(combined) > max_length or pretty?(head, min_length) do
+    if size(combined) > max_length or pretty?(cur.text, min_length) do
       # In this case, we don't want to merge the two.
-      join_words([head | rest], [], [buf | ready], min_length, max_length)
+      merge([cur | rest], [], [buf | ready], min_length, max_length)
     else
       # Merge with buffer and go on!
-      join_words(rest, [head | buf], ready, min_length, max_length)
+      merge(rest, [cur | buf], ready, min_length, max_length)
     end
   end
 
-  defp marshal_tag({:text, text}), do: text
-  defp marshal_tag({:class, classname, text}), do: "<c." <> classname <> ">" <> text <> "</c>"
-  defp marshal_tag({:voice, speaker, text}), do: "<v " <> speaker <> ">" <> text <> "</v>"
-  defp marshal_tag({:bold, text}), do: "<b>" <> text <> "</b>"
-  defp marshal_tag({:italics, text}), do: "<i>" <> text <> "</i>"
-  defp marshal_tag({:underline, text}), do: "<u>" <> text <> "</u>"
+  defp marshal_tag(%Tag{type: :text, text: text}), do: text
+  defp marshal_tag(%Tag{type: :bold, text: text}), do: "<b>" <> text <> "</b>"
+  defp marshal_tag(%Tag{type: :italics, text: text}), do: "<i>" <> text <> "</i>"
+  defp marshal_tag(%Tag{type: :underline, text: text}), do: "<u>" <> text <> "</u>"
+
+  defp marshal_tag(%Tag{type: :class, attribute: classname, text: text}),
+    do: "<c." <> classname <> ">" <> text <> "</c>"
+
+  defp marshal_tag(%Tag{type: :voice, attribute: speaker, text: text}),
+    do: "<v " <> speaker <> ">" <> text <> "</v>"
 
   defp tokenize([], acc) do
     Enum.reverse(acc)
@@ -186,9 +222,6 @@ defmodule Subtitle.WebVTT.Payload do
   end
 
   defp parse_tokens([], nil, acc) do
-    # FIXME
-    # Finalize parsing of the current tag in case it
-    # was not closed.
     {:ok, Enum.reverse(acc)}
   end
 
@@ -199,36 +232,31 @@ defmodule Subtitle.WebVTT.Payload do
   end
 
   defp parse_tokens([{:tag, "c." <> classname} | t], nil, acc) do
-    parse_tokens(t, {:class, classname, nil}, acc)
+    parse_tokens(t, Tag.class(classname, nil), acc)
   end
 
   defp parse_tokens([{:tag, "i"} | t], nil, acc) do
-    parse_tokens(t, {:italics, nil}, acc)
+    parse_tokens(t, Tag.italics(nil), acc)
   end
 
   defp parse_tokens([{:tag, "b"} | t], nil, acc) do
-    parse_tokens(t, {:bold, nil}, acc)
+    parse_tokens(t, Tag.bold(nil), acc)
   end
 
   defp parse_tokens([{:tag, "u"} | t], nil, acc) do
-    parse_tokens(t, {:underline, nil}, acc)
+    parse_tokens(t, Tag.underline(nil), acc)
   end
 
   defp parse_tokens([{:tag, "v " <> name} | t], nil, acc) do
-    parse_tokens(t, {:voice, name, nil}, acc)
+    parse_tokens(t, Tag.voice(name, nil), acc)
   end
 
   defp parse_tokens([{:text, text} | t], nil, acc) do
-    parse_tokens(t, nil, [{:text, text} | acc])
+    parse_tokens(t, nil, [Tag.text(text) | acc])
   end
 
-  defp parse_tokens([{:text, text} | t], {tag, name, nil}, acc) when tag in [:class, :voice] do
-    parse_tokens(t, nil, [{tag, name, text} | acc])
-  end
-
-  defp parse_tokens([{:text, text} | t], {tag, nil}, acc)
-       when tag in [:italics, :bold, :underline] do
-    parse_tokens(t, nil, [{tag, text} | acc])
+  defp parse_tokens([{:text, text} | t], tag, acc) do
+    parse_tokens(t, nil, [Tag.update_text(tag, fn _ -> text end) | acc])
   end
 
   defp consume_graphemes([next | rest], ending, acc) when next == ending do
