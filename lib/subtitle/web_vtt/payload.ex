@@ -72,7 +72,7 @@ defmodule Subtitle.WebVTT.Payload do
   Each tag will be fragmented into a list of single word tags of the same type. If words are longer than max_length, they are wrapped.
   """
   @spec fragment(Tag.t() | [Tag.t()], pos_integer()) :: [Tag.t()]
-  def fragment(tag_or_tags, _max_length) do
+  def fragment(tag_or_tags, max_length) do
     # TODO
     # Implement wrapping.
 
@@ -81,34 +81,32 @@ defmodule Subtitle.WebVTT.Payload do
     |> Enum.flat_map(fn tag ->
       tag.text
       |> String.split(~r/\s/, trim: true)
+      |> wrap_words(max_length)
       |> Enum.map(fn word -> %Tag{tag | text: word} end)
     end)
   end
 
-  # @doc "Splits words when they are longer then the specified length"
-  # @spec wrap_words([tag()], pos_integer()) :: [tag()]
-  # def wrap_words(tags, _max_length) do
-  #   # TODO
-  #   # implement this one.
-  #   # Enum.flat_map(words, &soft_wrap(&1, max_length))
-  #   tags
-  # end
+  @doc "Splits words when they are longer then the specified length"
+  @spec wrap_words([binary()], pos_integer()) :: [binary()]
+  def wrap_words(words, max_length) do
+    Enum.flat_map(words, &soft_wrap(&1, max_length))
+  end
 
-  # # defp soft_wrap(word, max_length) do
-  # #   if String.length(word) <= max_length do
-  # #     [word]
-  # #   else
-  # #     case String.split(word, ["-", "–"], trim: true) do
-  # #       [word] -> hard_wrap(word, max_length)
-  # #       words -> Enum.flat_map(words, &soft_wrap("#{&1}-", max_length))
-  # #     end
-  # #   end
-  # # end
+  defp soft_wrap(word, max_length) do
+    if String.length(word) <= max_length do
+      [word]
+    else
+      case String.split(word, ["-", "–"], trim: true) do
+        [word] -> hard_wrap(word, max_length)
+        words -> Enum.flat_map(words, &soft_wrap("#{&1}-", max_length))
+      end
+    end
+  end
 
-  # # defp hard_wrap(word, max_length) do
-  # #   {pre, rest} = String.split_at(word, max_length - 1)
-  # #   ["#{pre}-" | soft_wrap(rest, max_length)]
-  # # end
+  defp hard_wrap(word, max_length) do
+    {pre, rest} = String.split_at(word, max_length - 1)
+    ["#{pre}-" | soft_wrap(rest, max_length)]
+  end
 
   @doc """
   Merges the tags until their text size falls within `min_length` and `max_length`. Calls simplify/1 on the final result.

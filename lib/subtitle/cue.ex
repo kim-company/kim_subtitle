@@ -223,8 +223,7 @@ defmodule Subtitle.Cue do
 
     lines_with_weights
     |> Enum.map_reduce(from, fn {line, weight}, s_from ->
-      s_to = round(s_from + weight_duration * weight) - 1
-      if s_to > to, do: raise("we're fucked: #{s_to} > #{to}")
+      s_to = round(s_from + weight_duration * weight)
 
       {%__MODULE__{
          text: line,

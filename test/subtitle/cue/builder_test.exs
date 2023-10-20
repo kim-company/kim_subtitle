@@ -17,7 +17,6 @@ defmodule Subtitle.Cue.BuilderTest do
   end
 
   describe "put_and_get/2" do
-    @tag skip: true
     test "with voice tags" do
       cues = [
         %Cue{
@@ -31,26 +30,31 @@ defmodule Subtitle.Cue.BuilderTest do
       builder = Builder.new()
       {_builder, cues} = Builder.put_and_get(builder, cues, flush: true)
 
+      # NOTE
+      # voice tags are repeated at each line to simplify splitting, i.e., they
+      # are treated as text tags and hence the simplify function is not merge
+      # the two lines together. For now this behavior is good to us, it is spec
+      # compliant and requires less code.
       expected = [
         %Cue{
           from: 0,
           to: 2971,
           text:
-            "<v Roger Bingham>We're actually at the Lucern Hotel,\njust down the street from the</v>",
+            "<v Roger Bingham>We're actually at the Lucern Hotel,</v>\n<v Roger Bingham>just down the street from the</v>",
           id: ""
         },
         %Cue{
           from: 2972,
           to: 5779,
           text:
-            "<v Roger Bingham>American Museum of Natural History\nAnd with me is Neil deGrasse Tyson</v>",
+            "<v Roger Bingham>American Museum of Natural History</v>\n<v Roger Bingham>And with me is Neil deGrasse Tyson</v>",
           id: ""
         },
         %Cue{
           from: 5780,
           to: 9000,
           text:
-            "<v Roger Bingham>Astrophysicist, Director of the\nHayden Planetarium at the AMNH.</v>",
+            "<v Roger Bingham>Astrophysicist, Director of the</v>\n<v Roger Bingham>Hayden Planetarium at the AMNH.</v>",
           id: ""
         }
       ]
