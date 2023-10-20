@@ -116,27 +116,6 @@ defmodule Subtitle.WebVTT.Payload do
     |> Enum.map(&simplify/1)
   end
 
-  # If we have a last and a prelast element we try to join them
-  # in the case that the last one is to short and the prelast is not pretty.
-  # defp merge([cur], buf, ready, min_length, max_length) do
-  #   buf_line =
-  #     buf
-  #     |> Enum.reverse()
-  #     |> string()
-  #     |> IO.inspect(label: "BUF LINE")
-
-  #   IO.inspect(cur, label: "CUR")
-
-  #   if size(cur) >= min_length or pretty?(buf_line, min_length) do
-  #     # We're merging buf with cur.
-  #     IO.inspect("ENTERED")
-
-  #     [cur, buf | ready]
-  #     |> Enum.map(&Enum.reverse/1)
-  #   else
-  #   end
-  # end
-
   defp merge([cur], [], [], _min_length, _max_length), do: [[cur]]
 
   defp merge([], [single], ready, min_length, max_length) do
