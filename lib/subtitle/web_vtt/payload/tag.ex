@@ -1,5 +1,8 @@
 defmodule Subtitle.WebVTT.Payload.Tag do
-  @type type :: :text | :bold | :italics | :underline | :voice | :class | :time
+  # TODO
+  # support ruby and time tags
+
+  @type type :: :text | :bold | :italics | :underline | :voice | :class | :time | :ruby
 
   @type t :: %__MODULE__{type: type(), text: binary(), attribute: any()}
   defstruct [:type, :text, :attribute]
