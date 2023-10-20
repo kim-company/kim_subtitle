@@ -114,9 +114,6 @@ defmodule Subtitle.Cue do
   def merge(cue1, cue2, opts \\ []) do
     opts = Keyword.validate!(opts, max_lines: 2, max_duration: 8000)
 
-    # FIXME
-    # Here we have to check the number of lines.
-
     [nlines1, nlines2] =
       Enum.map([cue1, cue2], fn cue ->
         cue.text

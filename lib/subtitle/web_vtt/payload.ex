@@ -73,9 +73,6 @@ defmodule Subtitle.WebVTT.Payload do
   """
   @spec fragment(Tag.t() | [Tag.t()], pos_integer()) :: [Tag.t()]
   def fragment(tag_or_tags, max_length) do
-    # TODO
-    # Implement wrapping.
-
     tag_or_tags
     |> List.wrap()
     |> Enum.flat_map(fn tag ->
