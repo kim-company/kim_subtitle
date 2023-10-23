@@ -32,7 +32,7 @@ defmodule Subtitle.Cue do
   is configurable through the `opts.silence` option, which defaults
   to 1ms.
   """
-  @spec to_paragraphs([t()], [to_paragraphs_option()]) :: [String.t()]
+  @spec to_paragraphs([t()], [to_paragraphs_option()]) :: [{:text | :speaker, String.t()}]
   def to_paragraphs(cues, opts \\ []) do
     cues
     |> to_paragraphs_lazy(opts)
