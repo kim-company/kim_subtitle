@@ -264,17 +264,17 @@ defmodule Subtitle.CueTest do
         }
       ]
 
-      assert Cue.to_paragraphs(cues) == [
-               {:speaker, "S1"},
+      assert [
+               {:speaker, "S1", _},
                {:text, "Hallo und willkommen zum"},
-               {:speaker, "S2"},
+               {:speaker, "S2", _},
                {:text, "Infrastruktur Review."},
-               {:speaker, "UU"},
+               {:speaker, "UU", _},
                {:text,
                 "Vier Seiten einer Übersetzung des Tetraedingo wird später sagen und erklären, wie sie übersetzt werden und wie sie es macht. Aber ich möchte jetzt anfangen."},
-               {:speaker, "S1"},
+               {:speaker, "S1", _},
                {:text, "Ich bin verrückt."}
-             ]
+             ] = Cue.to_paragraphs(cues)
     end
 
     defp to_paragraphs_flat(cues, opts \\ []) do
