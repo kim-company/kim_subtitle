@@ -16,12 +16,20 @@ defmodule Subtitle.WebVTT.HeaderLine do
   end
 
   defp parse_offset("MPEGTS:" <> amount) do
-    timing = String.to_integer(amount)
+    timing =
+      amount
+      |> String.trim()
+      |> String.to_integer()
+
     round(timing / 90)
   end
 
   defp parse_offset("LOCAL:" <> amount) do
-    {:ok, timing} = Subtitle.WebVTT.Timing.parse(amount)
+    {:ok, timing} =
+      amount
+      |> String.trim()
+      |> Subtitle.WebVTT.Timing.parse()
+
     -timing
   end
 end
