@@ -134,8 +134,17 @@ defmodule Subtitle.Cue do
         {:error, :max_duration_exceeded}
 
       true ->
+        payload =
+          [cue1, cue2]
+          |> Enum.map(fn cue ->
+            cue.text
+            |> Payload.unmarshal!()
+            |> Payload.marshal!()
+          end)
+          |> Enum.join("\n")
+
         cue = %__MODULE__{
-          text: "#{cue1.text}\n#{cue2.text}",
+          text: payload,
           from: cue1.from,
           to: cue2.to
         }

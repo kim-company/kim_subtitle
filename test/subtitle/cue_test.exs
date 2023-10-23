@@ -37,6 +37,19 @@ defmodule Subtitle.CueTest do
 
       assert Cue.merge(cue1, cue2) == {:error, :gap_too_big}
     end
+
+    test "corrects tags while merging" do
+      cue1 = %Cue{from: 0, to: 10, text: "<v UU>All right, everyone."}
+      cue2 = %Cue{from: 11, to: 20, text: "<v UU>Okay, alle zusammen."}
+
+      expected = %Cue{
+        text: "<v UU>All right, everyone.</v>\n<v UU>Okay, alle zusammen.</v>",
+        from: 0,
+        to: 20
+      }
+
+      assert Cue.merge(cue1, cue2) == {:ok, expected}
+    end
   end
 
   describe "tidy/1" do
