@@ -219,5 +219,19 @@ defmodule Subtitle.WebVTTTest do
 
       assert input == input |> WebVTT.unmarshal!() |> WebVTT.marshal!()
     end
+
+    test "with spaces in X-TIMESTAMP-MAP in the header" do
+      input = """
+      WEBVTT
+      X-TIMESTAMP-MAP=MPEGTS: 181083,LOCAL: 00:00:00.000
+
+      00:44:13.215 --> 00:44:17.881
+      Deshalb sollte sollten die Empfehlung
+      bis Ende März vorgelegt werden.
+
+      """
+
+      assert input == input |> WebVTT.unmarshal!() |> WebVTT.marshal!()
+    end
   end
 end
