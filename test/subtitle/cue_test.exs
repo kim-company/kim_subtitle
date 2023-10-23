@@ -186,7 +186,7 @@ defmodule Subtitle.CueTest do
         to: 2000
       }
 
-      assert Cue.to_paragraphs([input]) == [input.text]
+      assert to_paragraphs_flat([input]) == [input.text]
     end
 
     test "removes newline characters" do
@@ -196,7 +196,7 @@ defmodule Subtitle.CueTest do
         to: 2000
       }
 
-      assert Cue.to_paragraphs([input]) == ["Keine Nebengeräusche von ihnen hören."]
+      assert to_paragraphs_flat([input]) == ["Keine Nebengeräusche von ihnen hören."]
     end
 
     test "joins cues that are separated by less than 1ms" do
@@ -205,7 +205,7 @@ defmodule Subtitle.CueTest do
         %Cue{from: 909, to: 2000, text: "von ihnen hören."}
       ]
 
-      assert Cue.to_paragraphs(input) == join_cue_text(input)
+      assert to_paragraphs_flat(input, silence: 1) == join_cue_text(input)
     end
 
     test "does not join cues that are separated by more than 1ms" do
@@ -216,7 +216,7 @@ defmodule Subtitle.CueTest do
 
       assert Enum.map(input, & &1.text) == ["Keine Nebengeräusche", "von ihnen hören."]
 
-      assert Cue.to_paragraphs(input) == Enum.map(input, & &1.text)
+      assert to_paragraphs_flat(input, silence: 1) == Enum.map(input, & &1.text)
     end
 
     test "silence is tunable" do
@@ -225,8 +225,62 @@ defmodule Subtitle.CueTest do
         %Cue{from: 1908, to: 2000, text: "von ihnen hören."}
       ]
 
-      assert Cue.to_paragraphs(input, silence: 1001) == join_cue_text(input)
-      assert Cue.to_paragraphs(input, silence: 1000) == Enum.map(input, & &1.text)
+      assert to_paragraphs_flat(input, silence: 1001) == join_cue_text(input)
+      assert to_paragraphs_flat(input, silence: 1000) == Enum.map(input, & &1.text)
+    end
+
+    test "with speaker tags" do
+      cues = [
+        %Subtitle.Cue{
+          from: 21072,
+          to: 25032,
+          text: "<v S1>Hallo und willkommen zum</v>\n<v S2>Infrastruktur Review.</v>",
+          id: ""
+        },
+        %Subtitle.Cue{
+          from: 27822,
+          to: 31767,
+          text:
+            "<v UU>Vier Seiten einer Übersetzung des</v>\n<v UU>Tetraedingo wird später sagen und</v>",
+          id: ""
+        },
+        %Subtitle.Cue{
+          from: 31768,
+          to: 36012,
+          text: "<v UU>erklären, wie sie übersetzt werden</v>\n<v UU>und wie sie es macht.</v>",
+          id: ""
+        },
+        %Subtitle.Cue{
+          from: 36013,
+          to: 38083,
+          text: "<v UU>Aber ich möchte jetzt anfangen.</v>",
+          id: ""
+        },
+        %Subtitle.Cue{
+          from: 38472,
+          to: 41142,
+          text: "<v S1>Ich bin verrückt.</v>",
+          id: ""
+        }
+      ]
+
+      assert Cue.to_paragraphs(cues) == [
+               {:speaker, "S1"},
+               {:text, "Hallo und willkommen zum"},
+               {:speaker, "S2"},
+               {:text, "Infrastruktur Review."},
+               {:speaker, "UU"},
+               {:text,
+                "Vier Seiten einer Übersetzung des Tetraedingo wird später sagen und erklären, wie sie übersetzt werden und wie sie es macht. Aber ich möchte jetzt anfangen."},
+               {:speaker, "S1"},
+               {:text, "Ich bin verrückt."}
+             ]
+    end
+
+    defp to_paragraphs_flat(cues, opts \\ []) do
+      cues
+      |> Cue.to_paragraphs(opts)
+      |> Enum.map(fn {_, text} -> text end)
     end
 
     defp join_cue_text(cues) do

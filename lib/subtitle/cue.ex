@@ -44,7 +44,7 @@ defmodule Subtitle.Cue do
   """
   @spec to_paragraphs_lazy(Enumerable.t(), Keyword.t()) :: Stream.t()
   def to_paragraphs_lazy(cues, opts \\ []) do
-    opts = Keyword.validate!(opts, silence: 1)
+    opts = Keyword.validate!(opts, silence: 1_000)
     silence = Keyword.fetch!(opts, :silence)
 
     reducer = fn
@@ -61,19 +61,40 @@ defmodule Subtitle.Cue do
 
     cues
     |> Stream.transform(fn -> [] end, reducer, fn acc -> {[acc], []} end, fn _ -> :ok end)
-    |> Stream.map(
-      &Enum.map(&1, fn cue ->
+    |> Stream.flat_map(fn cues ->
+      cues
+      |> Enum.reverse()
+      |> Enum.flat_map(fn cue ->
         cue.text
         |> Payload.unmarshal!()
-        |> Payload.string()
+        |> Enum.map(fn
+          tag = %Payload.Tag{type: :voice} ->
+            {tag.attribute, tag.text}
+
+          tag ->
+            {nil, tag.text}
+        end)
       end)
-    )
-    |> Stream.map(fn acc ->
-      acc
+      |> Enum.reject(fn {_, s} -> String.match?(s, ~r/^\s*$/) end)
+      |> Enum.reduce([], fn
+        {x, text}, [] -> [{x, text}]
+        {x, text}, [{x, old_text} | rest] -> [{x, old_text <> " " <> text} | rest]
+        elem, acc -> [elem | acc]
+      end)
       |> Enum.reverse()
-      |> Enum.join(" ")
-      |> String.replace("\n", " ")
-      |> String.trim()
+      |> Enum.flat_map(fn {speaker, sentences} ->
+        text =
+          sentences
+          |> String.replace("\n", " ")
+          |> String.replace(~r/\s+/, " ")
+          |> String.trim()
+
+        List.flatten([
+          if(speaker != nil, do: [{:speaker, speaker}], else: []),
+          [{:text, text}]
+        ])
+      end)
+      |> Enum.filter(fn elem -> elem != "" end)
     end)
   end
 
