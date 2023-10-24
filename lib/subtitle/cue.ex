@@ -65,24 +65,42 @@ defmodule Subtitle.Cue do
       cues
       |> Enum.reverse()
       |> Enum.flat_map(fn cue ->
-        cue.text
-        |> Payload.unmarshal!()
-        |> Enum.map(fn
-          tag = %Payload.Tag{type: :voice} ->
-            {tag.attribute, tag.text}
+        # FIXME
+        # this calculation is very similar to the add_timigs stuff.
+        tags_with_weight =
+          cue.text
+          |> Payload.unmarshal!()
+          |> Enum.map(fn tag -> {tag, compute_text_timing_weight(tag.text)} end)
 
-          tag ->
-            {nil, tag.text}
+        total_weight =
+          tags_with_weight
+          |> Enum.map(&elem(&1, 1))
+          |> Enum.sum()
+
+        weight_duration = (cue.to - cue.from) / total_weight
+
+        tags_with_weight
+        |> Enum.map_reduce(cue.from, fn {tag, weight}, s_from ->
+          s_to = round(s_from + weight_duration * weight)
+          {{tag, %{from: s_from, to: s_to}}, s_to}
+        end)
+        |> elem(0)
+        |> Enum.map(fn
+          {tag = %Payload.Tag{type: :voice}, timing} ->
+            {timing.from, tag.attribute, tag.text}
+
+          {tag, timing} ->
+            {timing.from, nil, tag.text}
         end)
       end)
-      |> Enum.reject(fn {_, s} -> String.match?(s, ~r/^\s*$/) end)
+      |> Enum.reject(fn {_, _, s} -> String.match?(s, ~r/^\s*$/) end)
       |> Enum.reduce([], fn
-        {x, text}, [] -> [{x, text}]
-        {x, text}, [{x, old_text} | rest] -> [{x, old_text <> " " <> text} | rest]
+        {from, x, text}, [] -> [{from, x, text}]
+        {_, x, text}, [{from, x, old_text} | rest] -> [{from, x, old_text <> " " <> text} | rest]
         elem, acc -> [elem | acc]
       end)
       |> Enum.reverse()
-      |> Enum.flat_map(fn {speaker, sentences} ->
+      |> Enum.flat_map(fn {from, speaker, sentences} ->
         text =
           sentences
           |> String.replace("\n", " ")
@@ -90,7 +108,7 @@ defmodule Subtitle.Cue do
           |> String.trim()
 
         List.flatten([
-          if(speaker != nil, do: [{:speaker, speaker}], else: []),
+          if(speaker != nil, do: [{:speaker, speaker, from}], else: []),
           [{:text, text}]
         ])
       end)
@@ -217,6 +235,15 @@ defmodule Subtitle.Cue do
     end
   end
 
+  defp compute_text_timing_weight(text) do
+    text
+    |> String.graphemes()
+    |> Enum.reduce(0, fn
+      char, sum when char in [".", ",", ";", ":", "!", "?"] -> sum + 9
+      _char, sum -> sum + 1
+    end)
+  end
+
   defp add_timings(tags_batch, from, to) do
     # NOTE
     # Takes a batch of tags that come from the same original cue.
@@ -229,14 +256,7 @@ defmodule Subtitle.Cue do
       tags_batch
       |> Enum.map(fn tags ->
         line = Payload.string(tags)
-
-        weight =
-          line
-          |> String.graphemes()
-          |> Enum.reduce(0, fn
-            char, sum when char in [".", ",", ";", ":", "!", "?"] -> sum + 9
-            _char, sum -> sum + 1
-          end)
+        weight = compute_text_timing_weight(line)
 
         {Payload.marshal!(tags), weight}
       end)
