@@ -14,6 +14,10 @@ defmodule Subtitle.SRT do
     end
   end
 
+  def marshal!(srt) do
+    Enum.map_join(srt.cues, "\n\n", &marshal_cue/1)
+  end
+
   defp parse_body(body, acc) do
     case String.split(body, "\n\n", parts: 2) do
       [""] ->
@@ -91,5 +95,15 @@ defmodule Subtitle.SRT do
     else
       [cue, ""]
     end
+  end
+
+  defp marshal_cue(cue) do
+    from = Timing.from_ms(cue.from)
+    to = Timing.from_ms(cue.to)
+    timing_info = "#{from} --> #{to}"
+
+    [cue.id, timing_info, cue.text]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join("\n")
   end
 end
