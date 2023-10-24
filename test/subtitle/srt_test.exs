@@ -127,13 +127,13 @@ defmodule Subtitle.SRTTest do
           text: "- Here's what I love most\nabout food and diet."
         },
         %Subtitle.Cue{
-          id: "2",
+          id: nil,
           from: Helpers.to_ms(0, 2, 827),
           to: Helpers.to_ms(0, 6, 383),
           text: "We all eat several times a day,\nand we're totally in charge"
         },
         %Subtitle.Cue{
-          id: "3",
+          id: "",
           from: Helpers.to_ms(0, 6, 383),
           to: Helpers.to_ms(0, 9, 427),
           text: "of what goes on our plate\nand what stays off."
@@ -147,12 +147,10 @@ defmodule Subtitle.SRTTest do
                - Here's what I love most
                about food and diet.
 
-               2
                00:00:02,827 --> 00:00:06,383
                We all eat several times a day,
                and we're totally in charge
 
-               3
                00:00:06,383 --> 00:00:09,427
                of what goes on our plate
                and what stays off.

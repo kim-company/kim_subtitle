@@ -102,7 +102,14 @@ defmodule Subtitle.SRT do
     to = Timing.from_ms(cue.to)
     timing_info = "#{from} --> #{to}"
 
-    [cue.id, timing_info, cue.text]
+    id =
+      cond do
+        cue.id == nil -> nil
+        String.trim(cue.id) == "" -> nil
+        true -> String.trim(cue.id)
+      end
+
+    [id, timing_info, cue.text]
     |> Enum.reject(&is_nil/1)
     |> Enum.join("\n")
   end
