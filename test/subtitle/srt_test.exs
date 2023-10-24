@@ -116,4 +116,45 @@ defmodule Subtitle.SRTTest do
              ] == srt.cues
     end
   end
+
+  describe "marshal/1" do
+    test "creates srt from cues" do
+      cues = [
+        %Subtitle.Cue{
+          id: "1",
+          from: Helpers.to_ms(0, 0, 498),
+          to: Helpers.to_ms(0, 2, 827),
+          text: "- Here's what I love most\nabout food and diet."
+        },
+        %Subtitle.Cue{
+          id: nil,
+          from: Helpers.to_ms(0, 2, 827),
+          to: Helpers.to_ms(0, 6, 383),
+          text: "We all eat several times a day,\nand we're totally in charge"
+        },
+        %Subtitle.Cue{
+          id: "",
+          from: Helpers.to_ms(0, 6, 383),
+          to: Helpers.to_ms(0, 9, 427),
+          text: "of what goes on our plate\nand what stays off."
+        }
+      ]
+
+      assert Subtitle.SRT.marshal!(%Subtitle.SRT{cues: cues}) ==
+               String.trim_trailing("""
+               1
+               00:00:00,498 --> 00:00:02,827
+               - Here's what I love most
+               about food and diet.
+
+               00:00:02,827 --> 00:00:06,383
+               We all eat several times a day,
+               and we're totally in charge
+
+               00:00:06,383 --> 00:00:09,427
+               of what goes on our plate
+               and what stays off.
+               """)
+    end
+  end
 end
