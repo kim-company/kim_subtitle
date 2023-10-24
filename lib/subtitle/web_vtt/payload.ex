@@ -39,8 +39,8 @@ defmodule Subtitle.WebVTT.Payload do
   def string(tags) do
     tags
     |> List.wrap()
-    |> Enum.map(&to_string/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &to_string/1)
+    |> String.replace(" \n ", "\n")
   end
 
   def size(tags) do
