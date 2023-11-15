@@ -7,6 +7,7 @@ defmodule Subtitle.Cue do
   defstruct [:from, :to, :text, id: ""]
 
   @max_distance_ms 250
+  @match_trailing_splitter ~r/[\.\?\!]$/
 
   @type t :: %__MODULE__{
           text: String.t(),
@@ -114,6 +115,65 @@ defmodule Subtitle.Cue do
       end)
       |> Enum.filter(fn elem -> elem != "" end)
     end)
+  end
+
+  def to_records(cues) do
+    cues
+    |> Stream.flat_map(fn cue ->
+      tags_with_weight =
+        cue.text
+        |> Payload.unmarshal!()
+        |> Payload.fragment(1_000_000)
+        |> Enum.filter(fn tag -> tag.type == :voice end)
+        |> Enum.map(fn tag -> {tag, compute_text_timing_weight(tag.text)} end)
+
+      total_weight =
+        tags_with_weight
+        |> Enum.map(&elem(&1, 1))
+        |> Enum.sum()
+
+      weight_duration = (cue.to - cue.from) / total_weight
+
+      tags_with_weight
+      |> Enum.map_reduce(cue.from, fn {tag, weight}, s_from ->
+        s_to = round(s_from + weight_duration * weight)
+
+        {%{
+           from: s_from,
+           to: s_to,
+           text: tag.text,
+           speaker: tag.attribute,
+           is_eos: false,
+           type: "pronunciation"
+         }, s_to}
+      end)
+      |> elem(0)
+      |> Enum.flat_map(fn record ->
+        split_splitter_record(record)
+      end)
+    end)
+    |> Enum.into([])
+  end
+
+  defp split_splitter_record(record) do
+    if String.match?(record.text, @match_trailing_splitter) do
+      [text, punct] =
+        Regex.split(@match_trailing_splitter, record.text, include_captures: true, trim: true)
+
+      [
+        %{record | to: record.to - 1, text: text},
+        %{
+          from: record.to - 1,
+          to: record.to,
+          text: punct,
+          is_eos: true,
+          speaker: record.speaker,
+          type: "punctuation"
+        }
+      ]
+    else
+      [record]
+    end
   end
 
   @doc "Splits a cue into multiple single-line cues."
