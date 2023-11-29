@@ -94,6 +94,8 @@ defmodule Subtitle.Cue.Builder do
   end
 
   @spec merge_cues([Cue.t()], [Cue.merge_option()]) :: [Cue.t()]
+  defp merge_cues([], _opts), do: []
+
   defp merge_cues(cues, opts) when cues != [] do
     cues
     |> tl()
