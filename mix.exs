@@ -1,13 +1,19 @@
 defmodule Subtitle.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+  @link "https://github.com/kim-company/kim_subtitle"
+
   def project do
     [
       app: :kim_subtitle,
-      version: "0.1.0",
+      version: @version,
+      source_url: @link,
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      description: "WebVTT subtitle parser. Tested. Defines a generic Cue struct.",
+      package: package()
     ]
   end
 
@@ -21,8 +27,15 @@ defmodule Subtitle.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+    ]
+  end
+
+  defp package do
+    [
+      maintainers: ["KIM Keep In Mind"],
+      licenses: ["Apache-2.0"],
+      links: %{"GitHub" => @link}
     ]
   end
 end
