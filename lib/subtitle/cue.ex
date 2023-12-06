@@ -124,7 +124,6 @@ defmodule Subtitle.Cue do
         cue.text
         |> Payload.unmarshal!()
         |> Payload.fragment(1_000_000)
-        |> Enum.filter(fn tag -> tag.type == :voice end)
         |> Enum.map(fn tag -> {tag, compute_text_timing_weight(tag.text)} end)
 
       total_weight =
@@ -156,23 +155,22 @@ defmodule Subtitle.Cue do
   end
 
   defp split_splitter_record(record) do
-    if String.match?(record.text, @match_trailing_splitter) do
-      [text, punct] =
-        Regex.split(@match_trailing_splitter, record.text, include_captures: true, trim: true)
+    case Regex.split(~r/[\.\?\!]$/, record.text, include_captures: true, trim: true) do
+      [text, punct] ->
+        [
+          %{record | to: record.to - 1, text: text},
+          %{
+            from: record.to - 1,
+            to: record.to,
+            text: punct,
+            is_eos: true,
+            speaker: record.speaker,
+            type: "punctuation"
+          }
+        ]
 
-      [
-        %{record | to: record.to - 1, text: text},
-        %{
-          from: record.to - 1,
-          to: record.to,
-          text: punct,
-          is_eos: true,
-          speaker: record.speaker,
-          type: "punctuation"
-        }
-      ]
-    else
-      [record]
+      _ ->
+        [record]
     end
   end
 
