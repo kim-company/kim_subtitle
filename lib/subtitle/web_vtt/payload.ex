@@ -225,6 +225,11 @@ defmodule Subtitle.WebVTT.Payload do
     parse_tokens(t, Tag.voice(name, nil), acc)
   end
 
+  # Remove unknown tags
+  defp parse_tokens([{:tag, unknown} | t], nil, acc) do
+    parse_tokens(t, nil, acc)
+  end
+
   defp parse_tokens([{:text, text} | t], nil, acc) do
     parse_tokens(t, nil, [Tag.text(text) | acc])
   end
