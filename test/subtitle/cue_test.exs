@@ -136,6 +136,23 @@ defmodule Subtitle.CueTest do
       assert Cue.split(cue, min_length: 10, max_length: 37) == [cue]
     end
 
+    test "wraps words on the limit" do
+      input = %Cue{
+        from: 0,
+        to: 1000,
+        text:
+          "Dies geschieht über APIs oder Anwendungsprogrammierschnittstellen, die es Ihrem Code ermöglichen."
+      }
+
+      expected = [
+        %Subtitle.Cue{from: 0, text: "Dies geschieht über APIs oder", to: 260},
+        %Subtitle.Cue{from: 261, text: "Anwendungsprogrammierschnittstellen,", to: 656},
+        %Subtitle.Cue{from: 657, text: "die es Ihrem Code ermöglichen.", to: 998}
+      ]
+
+      assert Cue.split(input, min_length: 36, max_length: 37) == expected
+    end
+
     test "wraps very long words" do
       input = %Cue{
         text: "KeineNeben-geräuschevonihnenhören.",

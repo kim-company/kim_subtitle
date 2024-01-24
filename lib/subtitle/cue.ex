@@ -7,7 +7,6 @@ defmodule Subtitle.Cue do
   defstruct [:from, :to, :text, id: ""]
 
   @max_distance_ms 250
-  @match_trailing_splitter ~r/[\.\?\!]$/
 
   @type t :: %__MODULE__{
           text: String.t(),

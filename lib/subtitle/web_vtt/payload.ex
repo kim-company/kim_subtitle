@@ -158,8 +158,13 @@ defmodule Subtitle.WebVTT.Payload do
     combined = [cur | buf]
 
     if size(combined) > max_length or pretty?(cur.text, min_length) do
-      # In this case, we don't want to merge the two.
-      merge([cur | rest], [], [buf | ready], min_length, max_length)
+      if buf == [] do
+        # In this case, `cur` is a complete cue by itself.
+        merge(rest, [], [[cur] | ready], min_length, max_length)
+      else
+        # In this case, we don't want to merge the two.
+        merge([cur | rest], [], [buf | ready], min_length, max_length)
+      end
     else
       # Merge with buffer and go on!
       merge(rest, [cur | buf], ready, min_length, max_length)
@@ -226,7 +231,7 @@ defmodule Subtitle.WebVTT.Payload do
   end
 
   # Remove unknown tags
-  defp parse_tokens([{:tag, unknown} | t], nil, acc) do
+  defp parse_tokens([{:tag, _unknown} | t], nil, acc) do
     parse_tokens(t, nil, acc)
   end
 
