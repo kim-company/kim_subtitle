@@ -29,13 +29,6 @@ defmodule Subtitle.WebVTT.Payload do
     |> Enum.join("")
   end
 
-  # A sentence is pretty if it has at least `min_length` chars,
-  # or has at least two chars and ends with a special character listed above.
-  @spec pretty?(binary(), pos_integer()) :: boolean()
-  def pretty?(text, min_length) do
-    String.length(text) >= min_length and String.match?(text, ~r/\w{2,}[.,;:!?]$/)
-  end
-
   def string(tags) do
     tags
     |> List.wrap()
@@ -106,68 +99,61 @@ defmodule Subtitle.WebVTT.Payload do
   end
 
   @doc """
-  Merges the tags until their text size falls within `min_length` and `max_length`. Calls simplify/1 on the final result.
+  Merges the tags until their text size reaches `max_length`. Calls simplify/1 on the final result.
   """
-  @spec merge([Tag.t()], pos_integer(), pos_integer()) :: [[Tag.t()]]
-  def merge(tags, min_length, max_length) do
+  @spec merge([Tag.t()], pos_integer()) :: [[Tag.t()]]
+  def merge(tags, max_length) do
     tags
-    |> merge([], [], min_length, max_length)
+    |> merge([], [], max_length)
     |> Enum.reverse()
     |> Enum.map(&simplify/1)
   end
 
-  defp merge([cur], [], [], _min_length, _max_length), do: [[cur]]
+  defp merge([cur], [], [], _max_length), do: [[cur]]
 
-  defp merge([], [single], ready, min_length, max_length) do
-    last_line =
-      hd(ready)
-      |> Enum.reverse()
-      |> string()
+  defp merge([], [single], ready, max_length) do
+    # In this case, we split the last buffer in half,
+    # appending this tag to the second half.
 
-    if size(single) > min_length or pretty?(last_line, min_length) do
-      [[single] | ready]
-      |> Enum.map(&Enum.reverse/1)
-    else
-      # In this case, we split the last buffer in half,
-      # appending this tag to the second half.
+    # NOTE
+    # This could be improved by splitting on a character count basis instead of number of words.
 
-      # NOTE
-      # This could be improved by splitting on a character count basis instead of number of words.
+    tags = fragment([single | hd(ready)], max_length)
+    # We're ceiling because the list is reversed and we prefer
+    # the first (here the last)
+    half = ceil(length(tags) / 2)
 
-      tags = fragment([single | hd(ready)], max_length)
-      # We're ceiling because the list is reversed and we prefer
-      # the first (here the last)
-      half = ceil(length(tags) / 2)
+    last_two =
+      tags
+      |> Enum.split(half)
+      |> Tuple.to_list()
 
-      last_two =
-        tags
-        |> Enum.split(half)
-        |> Tuple.to_list()
-
-      (last_two ++ tl(ready))
-      |> Enum.map(&Enum.reverse/1)
-    end
-  end
-
-  defp merge([], buf, ready, _min_length, _max_length) do
-    [buf | ready]
+    (last_two ++ tl(ready))
     |> Enum.map(&Enum.reverse/1)
   end
 
-  defp merge([cur | rest], buf, ready, min_length, max_length) do
+  defp merge([], [], ready, _max_length) do
+    Enum.map(ready, &Enum.reverse/1)
+  end
+
+  defp merge([], buf, ready, _max_length) do
+    Enum.map([buf | ready], &Enum.reverse/1)
+  end
+
+  defp merge([cur | rest], buf, ready, max_length) do
     combined = [cur | buf]
 
-    if size(combined) > max_length or pretty?(cur.text, min_length) do
+    if size(combined) > max_length do
       if buf == [] do
         # In this case, `cur` is a complete cue by itself.
-        merge(rest, [], [[cur] | ready], min_length, max_length)
+        merge(rest, [], [[cur] | ready], max_length)
       else
         # In this case, we don't want to merge the two.
-        merge([cur | rest], [], [buf | ready], min_length, max_length)
+        merge([cur | rest], [], [buf | ready], max_length)
       end
     else
       # Merge with buffer and go on!
-      merge(rest, [cur | buf], ready, min_length, max_length)
+      merge(rest, [cur | buf], ready, max_length)
     end
   end
 

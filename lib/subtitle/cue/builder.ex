@@ -8,11 +8,10 @@ defmodule Subtitle.Cue.Builder do
 
   alias Subtitle.Cue
 
-  defstruct [:pending, :last, :min_length, :max_length, :max_lines, :min_duration, :max_duration]
+  defstruct [:pending, :last, :max_length, :max_lines, :min_duration, :max_duration]
 
   @type t :: %__MODULE__{
           pending: Cue.t() | nil,
-          min_length: non_neg_integer(),
           max_length: pos_integer(),
           min_duration: pos_integer(),
           max_duration: pos_integer(),
@@ -20,8 +19,7 @@ defmodule Subtitle.Cue.Builder do
         }
 
   @type new_option ::
-          {:min_length, non_neg_integer()}
-          | {:max_length, pos_integer()}
+          {:max_length, pos_integer()}
           | {:max_lines, pos_integer()}
           | {:min_duration, pos_integer()}
           | {:max_duration, pos_integer()}
@@ -29,7 +27,6 @@ defmodule Subtitle.Cue.Builder do
   def new(opts \\ []) do
     opts =
       Keyword.validate!(opts,
-        min_length: 20,
         max_length: 37,
         min_duration: 2000,
         max_duration: 8000,
@@ -39,7 +36,6 @@ defmodule Subtitle.Cue.Builder do
     %__MODULE__{
       pending: nil,
       last: nil,
-      min_length: opts[:min_length],
       max_length: opts[:max_length],
       min_duration: opts[:min_duration],
       max_duration: opts[:max_duration],
@@ -51,7 +47,7 @@ defmodule Subtitle.Cue.Builder do
   @spec put_and_get(t(), Cue.t() | [Cue.t()], Keyword.t()) :: {t(), [Cue.t()]}
   def put_and_get(builder, cue_or_cues, opts \\ []) do
     flush = Keyword.get(opts, :flush, false)
-    split_opts = [min_length: builder.min_length, max_length: builder.max_length]
+    split_opts = [max_length: builder.max_length]
 
     cues =
       cue_or_cues

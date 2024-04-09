@@ -15,9 +15,7 @@ defmodule Subtitle.Cue do
           to: pos_integer()
         }
 
-  @type split_option ::
-          {:min_length, pos_integer()}
-          | {:max_length, pos_integer()}
+  @type split_option :: {:max_length, pos_integer()}
 
   @type merge_option ::
           {:max_lines, pos_integer()}
@@ -176,7 +174,7 @@ defmodule Subtitle.Cue do
   @doc "Splits a cue into multiple single-line cues."
   @spec split(t(), [split_option()]) :: [t()]
   def split(cue, opts \\ []) do
-    opts = Keyword.validate!(opts, min_length: 10, max_length: 37)
+    opts = Keyword.validate!(opts, max_length: 37)
     cue = Map.update!(cue, :text, &String.trim/1)
 
     tags = Payload.unmarshal!(cue.text)
@@ -192,7 +190,7 @@ defmodule Subtitle.Cue do
       true ->
         tags
         |> Payload.fragment(opts[:max_length])
-        |> Payload.merge(opts[:min_length], opts[:max_length])
+        |> Payload.merge(opts[:max_length])
         |> add_timings(cue.from, cue.to)
     end
   end
