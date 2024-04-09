@@ -281,10 +281,10 @@ defmodule Subtitle.Cue do
   preserving their duration. It adds 1ms between overapping cues.
   """
   @spec align([t()]) :: [t()]
-  def align(cues) do
+  def align(cues, min_duration \\ nil) do
     if length(cues) > 1 do
       {prev, next} = Enum.split(cues, 1)
-      do_align(next, prev)
+      do_align(next, prev, min_duration)
     else
       cues
     end
@@ -336,17 +336,34 @@ defmodule Subtitle.Cue do
     |> elem(0)
   end
 
-  defp do_align([], acc), do: Enum.reverse(acc)
+  defp do_align([], acc, _min_duration), do: Enum.reverse(acc)
 
-  defp do_align([right | rest], [left | acc]) do
-    if left.to >= right.from do
+  defp do_align([right | rest], [left | acc], min_duration) do
+    delay = left.to - right.from
+
+    if delay > 0 do
       from = left.to + 1
       to = from + duration(right)
+
+      # If the new duration is > min_duration and we have delay,
+      # we can take advantage of the extra time we have at our
+      # disposal to fix the delay.
+      new_right_duration = to - from
+      extra_duration = new_right_duration - (min_duration || new_right_duration)
+
+      to =
+        if extra_duration > 0 do
+          recover = min(delay, extra_duration)
+          to - recover
+        else
+          to
+        end
+
       right = %{right | from: from, to: to}
 
-      do_align(rest, [right, left | acc])
+      do_align(rest, [right, left | acc], min_duration)
     else
-      do_align(rest, [right, left | acc])
+      do_align(rest, [right, left | acc], min_duration)
     end
   end
 

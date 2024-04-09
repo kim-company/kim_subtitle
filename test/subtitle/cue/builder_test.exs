@@ -17,6 +17,30 @@ defmodule Subtitle.Cue.BuilderTest do
   end
 
   describe "put_and_get/2" do
+    test "recovers sentence delay" do
+      cues =
+        [
+          %Cue{
+            text: "Liebe Zuschauer!",
+            from: 474_690,
+            to: 475_650
+          },
+          %Cue{
+            text:
+              "In Deutschland ist es wieder so weit Die Regierung lässt Menschen gegen Andersdenkende aufmarschieren.",
+            from: 475_950,
+            to: 481_950
+          }
+        ]
+
+      opts = [max_length: 37, min_duration: 2000]
+      delays = measure_cue_delay(Builder.new(opts), cues)
+      # We expect the first cue to create some delay as it lasts less then 2
+      # seconds. The second cue is going to be delayed because of that, but as
+      # soon as we have a duration buffer to fix it that's what we do.
+      assert delays == [0, 741, 0]
+    end
+
     test "with voice tags" do
       cues = [
         %Cue{
@@ -127,7 +151,10 @@ defmodule Subtitle.Cue.BuilderTest do
         %Cue{from: 643_149, to: 644_738, text: "Badebucht garantiert."}
       ]
 
-      assert measure_comulative_delay(Builder.new(), cues) <= 100
+      delays = measure_cue_delay(Builder.new(), cues)
+      avg = Enum.sum(delays) / length(delays)
+
+      assert avg <= 130
     end
 
     test "merges successfully two lines" do
@@ -144,19 +171,19 @@ defmodule Subtitle.Cue.BuilderTest do
     end
 
     test "keeps the start duration of the cue correct" do
-      {builder, cues} =
-        Builder.new(min_duration: 0, max_duration: 9999)
-        |> Builder.put_and_get(%Subtitle.Cue{
-          from: 1447,
-          to: 5015,
-          text: "Volete offrire al vostro cliente finale diversi servizi e video come pacchetto?"
-        })
+      {_builder, cues} =
+        Builder.new(min_duration: 0, max_duration: 9999, max_length: 9999)
+        |> Builder.put_and_get(
+          %Subtitle.Cue{
+            from: 1447,
+            to: 5015,
+            text:
+              "Volete offrire al vostro cliente finale diversi servizi e video come pacchetto?"
+          },
+          flush: true
+        )
 
       assert [%Cue{from: 1447}] = cues
-
-      {_builder, cue} = Builder.flush(builder)
-
-      assert %Subtitle.Cue{} = cue
     end
 
     test "returns the single buffer" do
@@ -203,21 +230,23 @@ defmodule Subtitle.Cue.BuilderTest do
     end
   end
 
-  def measure_comulative_delay(builder, cues) do
-    cues
-    |> Enum.reduce({builder, 0}, fn cue, {builder, delay} ->
-      last = builder.pending || builder.last
+  def measure_cue_delay(builder, input_cues) do
+    zero_delay_builder = Builder.new(min_duration: 0)
+    {_, zero_delay_cues} = Builder.put_and_get(zero_delay_builder, input_cues, flush: true)
+    {_, target_cues} = Builder.put_and_get(builder, input_cues, flush: true)
 
-      delay =
-        if last != nil and last.to > cue.from do
-          delay + (last.to - cue.from)
-        else
-          delay
-        end
+    assert length(target_cues) == length(zero_delay_cues)
 
-      {builder, _ready} = Builder.put_and_get(builder, cue)
-      {builder, delay}
+    target_cues
+    |> Enum.zip(zero_delay_cues)
+    |> Enum.map(fn {target, ref} ->
+      target.from - ref.from
     end)
-    |> elem(1)
+  end
+
+  def measure_comulative_delay(builder, input_cues) do
+    builder
+    |> measure_cue_delay(input_cues)
+    |> Enum.sum()
   end
 end

@@ -59,16 +59,19 @@ defmodule Subtitle.Cue.Builder do
     merge_opts = [max_lines: builder.max_lines, max_duration: builder.max_duration]
     cues = merge_cues(cues, merge_opts)
 
-    {pending, done} =
+    cues = Enum.reverse(cues)
+    cues = finalize_cues(builder, cues)
+
+    # We need both pending and last cue in case we keep on flushing the builder:
+    # in that case, we still want to know about the last cue produced.
+
+    {pending, cues} =
       unless flush do
-        [pending | done] = cues
-        {pending, done}
+        [pending | done] = Enum.reverse(cues)
+        {pending, Enum.reverse(done)}
       else
         {nil, cues}
       end
-
-    cues = Enum.reverse(done)
-    cues = finalize_cues(builder, cues)
 
     builder = %{
       builder
@@ -115,10 +118,10 @@ defmodule Subtitle.Cue.Builder do
 
     if builder.last do
       [builder.last | cues]
-      |> Cue.align()
+      |> Cue.align(builder.min_duration)
       |> tl()
     else
-      Cue.align(cues)
+      Cue.align(cues, builder.min_duration)
     end
   end
 end
