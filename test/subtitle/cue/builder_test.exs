@@ -159,7 +159,7 @@ defmodule Subtitle.Cue.BuilderTest do
 
     test "merges successfully two lines" do
       {_builder, cues} =
-        Builder.new(min_duration: 0, max_duration: 1000)
+        Builder.new(min_duration: 0)
         |> Builder.put_and_get([
           %Cue{text: "Hallo wie geht es dir?", from: 0, to: 400},
           %Cue{text: "Hallo", from: 401, to: 900},
@@ -172,7 +172,7 @@ defmodule Subtitle.Cue.BuilderTest do
 
     test "keeps the start duration of the cue correct" do
       {_builder, cues} =
-        Builder.new(min_duration: 0, max_duration: 9999, max_length: 9999)
+        Builder.new(min_duration: 0, max_length: 9999)
         |> Builder.put_and_get(
           %Subtitle.Cue{
             from: 1447,
@@ -188,7 +188,7 @@ defmodule Subtitle.Cue.BuilderTest do
 
     test "returns the single buffer" do
       {_builder, cues} =
-        Builder.new(min_duration: 0, max_duration: 1000)
+        Builder.new(min_duration: 0)
         |> Builder.put_and_get([
           %Cue{text: "Hallo wie geht es dir?", from: 0, to: 400},
           %Cue{text: "I am incomplete", from: 1000, to: 5000}
@@ -199,7 +199,7 @@ defmodule Subtitle.Cue.BuilderTest do
     end
 
     test "extends and aligns cues to the minimum duration" do
-      builder = Builder.new(min_duration: 1000, max_duration: 9999)
+      builder = Builder.new(min_duration: 1000)
 
       {builder, cues} =
         Builder.put_and_get(builder, [

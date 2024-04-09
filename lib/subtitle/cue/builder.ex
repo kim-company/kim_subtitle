@@ -8,13 +8,12 @@ defmodule Subtitle.Cue.Builder do
 
   alias Subtitle.Cue
 
-  defstruct [:pending, :last, :max_length, :max_lines, :min_duration, :max_duration]
+  defstruct [:pending, :last, :max_length, :max_lines, :min_duration]
 
   @type t :: %__MODULE__{
           pending: Cue.t() | nil,
           max_length: pos_integer(),
           min_duration: pos_integer(),
-          max_duration: pos_integer(),
           max_lines: pos_integer()
         }
 
@@ -22,14 +21,12 @@ defmodule Subtitle.Cue.Builder do
           {:max_length, pos_integer()}
           | {:max_lines, pos_integer()}
           | {:min_duration, pos_integer()}
-          | {:max_duration, pos_integer()}
   @spec new([new_option()]) :: t()
   def new(opts \\ []) do
     opts =
       Keyword.validate!(opts,
         max_length: 37,
         min_duration: 2000,
-        max_duration: 8000,
         max_lines: 2
       )
 
@@ -38,7 +35,6 @@ defmodule Subtitle.Cue.Builder do
       last: nil,
       max_length: opts[:max_length],
       min_duration: opts[:min_duration],
-      max_duration: opts[:max_duration],
       max_lines: opts[:max_lines]
     }
   end
@@ -56,7 +52,7 @@ defmodule Subtitle.Cue.Builder do
 
     cues = if builder.pending, do: [builder.pending | cues], else: cues
 
-    merge_opts = [max_lines: builder.max_lines, max_duration: builder.max_duration]
+    merge_opts = [max_lines: builder.max_lines]
     cues = merge_cues(cues, merge_opts)
 
     cues = Enum.reverse(cues)
@@ -113,7 +109,6 @@ defmodule Subtitle.Cue.Builder do
   defp finalize_cues(builder, cues) do
     cues =
       cues
-      |> Enum.map(&Cue.cut(&1, builder.max_duration))
       |> Enum.map(&Cue.extend(&1, builder.min_duration))
 
     if builder.last do
