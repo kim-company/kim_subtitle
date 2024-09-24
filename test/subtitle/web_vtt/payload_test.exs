@@ -8,7 +8,7 @@ defmodule Subtitle.WebVTT.PayloadTest do
     {"<c.classname>text</c>", {:class, "text", "classname"}},
     {"<v Bob>text</v>", {:voice, "text", "Bob"}},
     {"<i>text</i>", {:italics, "text", nil}},
-    {"<b>text</b>", {:bold, "text", nil}},
+    {"<b>te&lt;x&gt;t</b>", {:bold, "te<x>t", nil}},
     {"<u>text</u>", {:underline, "text", nil}}
   ]
 

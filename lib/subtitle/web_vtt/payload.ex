@@ -1,6 +1,11 @@
 defmodule Subtitle.WebVTT.Payload do
   alias Subtitle.WebVTT.Payload.Tag
 
+  @entities %{
+    ">" => "&gt;",
+    "<" => "&lt;"
+  }
+
   @spec unmarshal!(binary()) :: [Tag.t()]
   def unmarshal!(text) do
     case unmarshal(text) do
@@ -157,16 +162,18 @@ defmodule Subtitle.WebVTT.Payload do
     end
   end
 
-  defp marshal_tag(%Tag{type: :text, text: text}), do: text
-  defp marshal_tag(%Tag{type: :bold, text: text}), do: "<b>" <> text <> "</b>"
-  defp marshal_tag(%Tag{type: :italics, text: text}), do: "<i>" <> text <> "</i>"
-  defp marshal_tag(%Tag{type: :underline, text: text}), do: "<u>" <> text <> "</u>"
+  defp marshal_tag(%Tag{type: :text, text: text}), do: encode_entities(text)
+  defp marshal_tag(%Tag{type: :bold, text: text}), do: "<b>" <> encode_entities(text) <> "</b>"
+  defp marshal_tag(%Tag{type: :italics, text: text}), do: "<i>" <> encode_entities(text) <> "</i>"
+
+  defp marshal_tag(%Tag{type: :underline, text: text}),
+    do: "<u>" <> encode_entities(text) <> "</u>"
 
   defp marshal_tag(%Tag{type: :class, attribute: classname, text: text}),
-    do: "<c." <> classname <> ">" <> text <> "</c>"
+    do: "<c." <> classname <> ">" <> encode_entities(text) <> "</c>"
 
   defp marshal_tag(%Tag{type: :voice, attribute: speaker, text: text}),
-    do: "<v " <> speaker <> ">" <> text <> "</v>"
+    do: "<v " <> speaker <> ">" <> encode_entities(text) <> "</v>"
 
   defp tokenize([], acc) do
     Enum.reverse(acc)
@@ -226,7 +233,7 @@ defmodule Subtitle.WebVTT.Payload do
   end
 
   defp parse_tokens([{:text, text} | t], tag, acc) do
-    parse_tokens(t, nil, [Tag.update_text(tag, fn _ -> text end) | acc])
+    parse_tokens(t, nil, [Tag.update_text(tag, fn _ -> decode_entities(text) end) | acc])
   end
 
   defp consume_graphemes([next | rest], ending, acc) when next == ending do
@@ -242,5 +249,17 @@ defmodule Subtitle.WebVTT.Payload do
 
   defp consume_graphemes([next | rest], ending, acc) do
     consume_graphemes(rest, ending, [next | acc])
+  end
+
+  defp encode_entities(text) do
+    Enum.reduce(@entities, text, fn {raw, escaped}, text ->
+      String.replace(text, raw, escaped)
+    end)
+  end
+
+  defp decode_entities(text) do
+    Enum.reduce(@entities, text, fn {raw, escaped}, text ->
+      String.replace(text, escaped, raw)
+    end)
   end
 end
