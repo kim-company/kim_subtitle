@@ -157,4 +157,52 @@ defmodule Subtitle.SRTTest do
                """)
     end
   end
+
+  describe "parse_body/1" do
+    test "can parse uncomplete srt" do
+      input = """
+      1
+      00:05:00,400 --> 00:05:15,300
+      This is an example of
+      a subtitle.
+
+      2
+      00:04
+      """
+
+      cues = [%Subtitle.Cue{
+                 id: "1",
+                 from: Helpers.to_ms(5, 0, 400),
+                 to: Helpers.to_ms(5, 15, 300),
+                 text: ~s/This is an example of\na subtitle./
+               }]
+
+      assert SRT.parse_body(input) == {:partial, cues, "2\n00:04\n"}
+    end
+
+    test "works with iodata" do
+      input = [
+        "1\n",
+        """
+        00:05:00,400 --> 00:05:15,300
+        This is an example of
+        a subtitle.
+
+        """,
+        """
+        2
+        00:04
+        """
+      ]
+
+      cues = [%Subtitle.Cue{
+                 id: "1",
+                 from: Helpers.to_ms(5, 0, 400),
+                 to: Helpers.to_ms(5, 15, 300),
+                 text: ~s/This is an example of\na subtitle./
+               }]
+
+      assert SRT.parse_body(input) == {:partial, cues, "2\n00:04\n"}
+    end
+  end
 end

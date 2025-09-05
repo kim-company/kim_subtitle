@@ -7,10 +7,10 @@ defmodule Subtitle.SRT do
   defstruct cues: []
 
   def unmarshal(srt, _opts \\ []) do
-    srt = String.replace(srt, "\r", "")
-
-    with {:ok, cues} <- parse_body(srt, []) do
-      {:ok, %__MODULE__{cues: cues}}
+    case parse_body(srt, []) do
+      {:ok, cues} -> {:ok, %__MODULE__{cues: discard_empty(cues)}}
+      {:partial, cues, _} -> {:ok, %__MODULE__{cues: discard_empty(cues)}}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -18,36 +18,35 @@ defmodule Subtitle.SRT do
     Enum.map_join(srt.cues, "\n\n", &marshal_cue/1)
   end
 
-  defp parse_body(body, acc) do
-    case String.split(body, "\n\n", parts: 2) do
+  def parse_body(body, acc \\ []) do
+    case :re.split(body, "(?:\r?\n){2}", parts: 2) do
       [""] ->
-        cues =
-          acc
-          # This parser allows empty cues, which are useless.
-          |> Enum.filter(fn %Cue{text: x} -> x != "" end)
-          |> Enum.reverse()
+        {:ok, Enum.reverse(acc)}
 
-        {:ok, cues}
+      [rest] ->
+        case parse_block(rest) do
+          {:ok, cue} ->
+            {:ok, Enum.reverse([cue | acc])}
 
-      [block | rest] ->
-        acc =
-          case parse_block(block) do
-            {:ok, cue} ->
-              [cue | acc]
+          {:error, _reason} ->
+            {:partial, acc, rest}
+        end
 
-            {:error, reason} ->
-              Logger.warning("Parse SRT block: #{inspect(reason)}")
-              acc
-          end
+      [block, rest] ->
+        case parse_block(block) do
+          {:ok, cue} ->
+            parse_body(rest, [cue | acc])
 
-        body = if rest != [], do: List.first(rest), else: ""
-        parse_body(body, acc)
+          {:error, reason} ->
+            Logger.warning("Parse SRT block: #{inspect(reason)}")
+            parse_body(rest, acc)
+        end
     end
   end
 
   defp parse_block(candidate_cue) do
     # Happens when a cue with no text is processed before.
-    candidate_cue = String.trim_leading(candidate_cue)
+    candidate_cue = String.trim(candidate_cue)
 
     with {:ok, id, rest} <- parse_cue_id(candidate_cue),
          {:ok, from, to, rest} <- parse_timings(rest) do
@@ -58,9 +57,6 @@ defmodule Subtitle.SRT do
          to: to,
          text: String.trim(rest)
        }}
-    else
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 
@@ -113,4 +109,6 @@ defmodule Subtitle.SRT do
     |> Enum.reject(&is_nil/1)
     |> Enum.join("\n")
   end
+
+  defp discard_empty(cues), do: Enum.reject(cues, & &1.text == "")
 end
