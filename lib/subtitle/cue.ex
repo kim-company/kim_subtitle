@@ -140,7 +140,7 @@ defmodule Subtitle.Cue do
            text: tag.text,
            speaker: tag.attribute,
            is_eos: false,
-           type: "pronunciation"
+           type: :pronunciation
          }, s_to}
       end)
       |> elem(0)
@@ -162,7 +162,7 @@ defmodule Subtitle.Cue do
             text: punct,
             is_eos: true,
             speaker: record.speaker,
-            type: "punctuation"
+            type: :punctuation
           }
         ]
 
