@@ -41,6 +41,12 @@ defmodule Subtitle.Cue.BuilderTest do
       assert delays == [0, 741, 0]
     end
 
+    test "correctly handles the case where no cue is being returned" do
+      assert {%Builder{pending: nil, last: nil}, []} =
+               Builder.new()
+               |> Builder.put_and_get(%Subtitle.Cue{text: "", from: 0, to: 100})
+    end
+
     test "with voice tags" do
       cues = [
         %Cue{

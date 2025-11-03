@@ -60,13 +60,17 @@ defmodule Subtitle.Cue.Builder do
 
     # We need both pending and last cue in case we keep on flushing the builder:
     # in that case, we still want to know about the last cue produced.
-
     {pending, cues} =
-      unless flush do
-        [pending | done] = Enum.reverse(cues)
-        {pending, Enum.reverse(done)}
-      else
-        {nil, cues}
+      cond do
+        flush ->
+          {nil, cues}
+
+        cues != [] ->
+          [pending | done] = Enum.reverse(cues)
+          {pending, Enum.reverse(done)}
+
+        true ->
+          {nil, []}
       end
 
     builder = %{
