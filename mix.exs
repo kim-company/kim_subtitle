@@ -1,7 +1,7 @@
 defmodule Subtitle.MixProject do
   use Mix.Project
 
-  @version "0.1.5"
+  @version "0.1.6"
   @link "https://github.com/kim-company/kim_subtitle"
 
   def project do
