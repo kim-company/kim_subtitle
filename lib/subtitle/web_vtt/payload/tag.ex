@@ -20,7 +20,7 @@ defmodule Subtitle.WebVTT.Payload.Tag do
   def italics(text), do: %__MODULE__{type: :italics, text: text}
   def underline(text), do: %__MODULE__{type: :underline, text: text}
 
-  def update_text(tag, fun) do
+  def update_text(%__MODULE__{} = tag, fun) do
     %__MODULE__{tag | text: fun.(tag.text) |> String.replace(~r/\s*\n\s*/, "\n")}
   end
 

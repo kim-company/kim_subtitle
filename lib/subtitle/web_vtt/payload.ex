@@ -73,7 +73,7 @@ defmodule Subtitle.WebVTT.Payload do
   def fragment(tag_or_tags, max_length) do
     tag_or_tags
     |> List.wrap()
-    |> Enum.flat_map(fn tag ->
+    |> Enum.flat_map(fn %Tag{} = tag ->
       tag.text
       |> String.split(~r/\s/, trim: true)
       |> wrap_words(max_length)

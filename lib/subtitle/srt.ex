@@ -23,6 +23,9 @@ defmodule Subtitle.SRT do
       [""] ->
         {:ok, Enum.reverse(acc)}
 
+      [] ->
+        {:ok, Enum.reverse(acc)}
+
       [rest] ->
         case parse_block(rest) do
           {:ok, cue} ->
@@ -110,5 +113,5 @@ defmodule Subtitle.SRT do
     |> Enum.join("\n")
   end
 
-  defp discard_empty(cues), do: Enum.reject(cues, & &1.text == "")
+  defp discard_empty(cues), do: Enum.reject(cues, &(&1.text == ""))
 end
