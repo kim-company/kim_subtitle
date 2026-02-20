@@ -19,6 +19,8 @@ defmodule Subtitle.SRT do
   end
 
   def parse_body(body, acc \\ []) do
+    body = normalize_newlines(body)
+
     case :re.split(body, "(?:\r?\n){2}", parts: 2) do
       [""] ->
         {:ok, Enum.reverse(acc)}
@@ -114,4 +116,10 @@ defmodule Subtitle.SRT do
   end
 
   defp discard_empty(cues), do: Enum.reject(cues, &(&1.text == ""))
+
+  defp normalize_newlines(data) do
+    data
+    |> IO.iodata_to_binary()
+    |> String.replace(~r/\r\n?/, "\n")
+  end
 end

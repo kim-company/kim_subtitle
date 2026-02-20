@@ -111,7 +111,42 @@ defmodule Subtitle.SRTTest do
                  id: "01",
                  from: Helpers.to_ms(0, 1, 621),
                  to: Helpers.to_ms(0, 2, 621),
-                 text: ~s/LSBOZXZlciBkcmluayBsaXF1aWQgbml/
+               text: ~s/LSBOZXZlciBkcmluayBsaXF1aWQgbml/
+               }
+             ] == srt.cues
+    end
+
+    test "with windows line separators" do
+      input =
+        Enum.join(
+          [
+            "1",
+            "00:05:00,400 --> 00:05:15,300",
+            "This is an example of",
+            "a subtitle.",
+            "",
+            "2",
+            "00:05:16,400 --> 00:05:25,300",
+            "This is an example of",
+            "a subtitle - 2nd subtitle."
+          ],
+          "\r\n"
+        )
+
+      assert {:ok, srt} = SRT.unmarshal(input)
+
+      assert [
+               %Subtitle.Cue{
+                 id: "1",
+                 from: Helpers.to_ms(5, 0, 400),
+                 to: Helpers.to_ms(5, 15, 300),
+                 text: ~s/This is an example of\na subtitle./
+               },
+               %Subtitle.Cue{
+                 id: "2",
+                 from: Helpers.to_ms(5, 16, 400),
+                 to: Helpers.to_ms(5, 25, 300),
+                 text: ~s/This is an example of\na subtitle - 2nd subtitle./
                }
              ] == srt.cues
     end
